@@ -1,0 +1,50 @@
+[project]
+name = "social-world-model"
+version = "0.1.0"
+description = "A module for simulating social interactions for ToM tasks"
+authors = [
+    { name = "Xuhui Zhou", email = "xuhuiz@cs.cmu.edu" }
+]
+requires-python = ">=3.10, <3.13"
+license = { text = "MIT License" }
+readme = "README.md"
+
+dependencies = [
+    "sotopia==0.1.2",
+    "pandas>=2.1.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+test = ["pytest>=7.0.0", "pytest-cov>=4.0.0", "pytest-asyncio>=0.21.0"]
+
+[tool.uv]
+dev-dependencies = [
+    "pre-commit>=3.5.0",
+    "nbmake>=0.10.0",
+    "types-setuptools>=69.0.0",
+    "types-requests>=2.31.0",
+    "types-tqdm>=4.66.0",
+    "types-protobuf==4.24.0.4",
+    "pandas-stubs>=2.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.10.0",
+]
+
+[tool.mypy]
+mypy_path = "stubs"
+strict = true
+plugins = [
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/social_world_model"]
