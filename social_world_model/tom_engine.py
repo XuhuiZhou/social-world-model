@@ -21,11 +21,11 @@ class Simulation(BaseModel):
     answer: str = Field(description="The answer that the agent gave to the question")
 
 class ToMEngine:
-    def __init__(self, agent_prompt: str = "") -> None:
+    def __init__(self, agent_prompt: str = "", model_name: str = "gpt-4o-mini") -> None:
         self.agents: Dict[str, LLMAgent] = {}
         self.agent_prompt: str = agent_prompt # The overall prompt for the agents to follow
         self.current_time = 0
-        self.model_name = "gpt-4o-2024-05-13"  # or your preferred model
+        self.model_name = model_name
         self.simulation: Simulation = Simulation(
             agents=[],
             agent_memories={},
