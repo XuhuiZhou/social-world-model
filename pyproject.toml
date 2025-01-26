@@ -11,7 +11,7 @@ readme = "README.md"
 
 dependencies = [
     "sotopia==0.1.2",
-    "pandas>=2.1.0"
+    "pandas>=2.1.0",
 ]
 
 [build-system]
@@ -41,6 +41,9 @@ plugins = [
     "pydantic.mypy",
     "pydantic.v1.mypy"
 ]
+
+[tool.uv.sources]
+sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "feature/add_o1" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

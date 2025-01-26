@@ -1,6 +1,5 @@
 from social_world_model.database import Observation, AgentAction
-from sotopia.generation_utils import agenerate
-from sotopia.generation_utils.generate import StrOutputParser
+from sotopia.generation_utils import agenerate, StrOutputParser
 
 class LLMAgent():
     def __init__(

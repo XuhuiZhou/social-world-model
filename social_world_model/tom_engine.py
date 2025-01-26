@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Tuple
-from langchain.output_parsers import PydanticOutputParser
+from sotopia.generation_utils import PydanticOutputParser
 from pydantic import BaseModel, Field
 from social_world_model.agents import LLMAgent
 from social_world_model.database import Observation

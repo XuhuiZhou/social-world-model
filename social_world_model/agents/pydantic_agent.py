@@ -14,7 +14,6 @@ pydantic_agent = Agent(
     'openai:gpt-4o',
     deps_type=AgentDependencies,
     result_type=AgentResult,
-    system_prompt='You are an AI agent. Provide concise and relevant responses.'
 )
 
 @pydantic_agent.system_prompt
@@ -65,7 +64,7 @@ class PydanticAgent:
 
         history = self._format_message_history(self.message_history)
         result = await pydantic_agent.run(history, deps=AgentDependencies())
-        action = result.data['response']
+        action = result.response
 
         return AgentAction(
             agent_name=self.name,

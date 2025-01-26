@@ -9,6 +9,7 @@ import json
 from typing import Any
 import os
 from pandas import Series
+from sotopia.generation_utils import StrOutputParser, agenerate
 
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
@@ -19,6 +20,60 @@ logging.basicConfig(
         RichHandler()
     ],
 )
+
+
+async def run_single_experiment_vanilla(row, model_name: str = "gpt-4-mini", save_result: bool = False) -> tuple[bool, dict[str, Any]]: # type: ignore
+    """A simplified version of run_single_experiment that just uses direct LLM generation.
+    
+    Args:
+        row: A row from the Percept-ToMi dataset
+        model_name: Name of the model to use
+        
+    Returns:
+        Tuple of (is_correct, result_dict)
+    """
+    # Create prompt with story and question
+    story = " ".join(eval(row['story']))
+    history = f"Story: {story}\nQuestion: {row['question']}"
+    
+    response = await agenerate(
+        model_name=model_name,
+        template="Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore.\nYou need to first reason about the question (majorly focusing where the object has been moved to, and focus on the most detailed position possible e.g., the object is in A and A is in B, then you should focus on 'A') and then answer the question with the following format:<reasoning>(reasoning)</reasoning> <answer>(answer)</answer>\n\nBelow is the story and question:\n{message_history}\n\nPossible answers: {candidates}",
+        input_values={
+            "message_history": history,
+            "agent_name": "observer",
+            "candidates": ", ".join(eval(row['cands'])),
+        },
+        temperature=0.7,
+        output_parser=StrOutputParser(),
+    )
+    
+    # Extract reasoning and answer from response
+    try:
+        reasoning = response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
+        answer = response.split("<answer>")[1].split("</answer>")[0].strip()
+    except IndexError:
+        reasoning = "Failed to parse reasoning"
+        answer = response  # Use full response as answer if parsing fails
+    
+    correct_answer = row['answer']
+    assert isinstance(answer, str)
+    is_correct = correct_answer in answer
+    
+    result = {
+        "question": row['question'],
+        "reasoning": reasoning,
+        "answer": answer,
+        "correct_answer": correct_answer,
+        "is_correct": is_correct
+    }
+    if save_result:
+        if not os.path.exists(f"data/tomi_vanilla/{model_name}"):
+            os.makedirs(f"data/tomi_vanilla/{model_name}")
+        with open(f"data/tomi_vanilla/{model_name}/{row['index']}.json", "w") as f:
+            json.dump(result, f)
+    return is_correct, result
+
 
 async def run_single_experiment(row, save_simulation: bool = False, model_name: str = "gpt-4-mini") -> tuple[bool, dict[str, Any]]: # type: ignore
     observation_with_perceivers = [] 
@@ -74,11 +129,15 @@ You need to first reason about the question (majorly focusing where the object h
     
     return is_correct, result
 
-async def run_batch(rows: pd.DataFrame, save_simulation: bool = False, model_name: str = "gpt-4-mini") -> list[tuple[bool, dict[str, Any]]]:
-    tasks = [run_single_experiment(row, save_simulation, model_name) for _, row in rows.iterrows()]
+async def run_batch(rows: pd.DataFrame, save: bool = False, model_name: str = "gpt-4-mini", mode: str = "vanilla") -> list[tuple[bool, dict[str, Any]]]:
+    logging.info(f"Running batch with mode {mode}")
+    if mode == "vanilla":
+        tasks = [run_single_experiment_vanilla(row, model_name, save) for _, row in rows.iterrows()]
+    else:
+        tasks = [run_single_experiment(row, save, model_name) for _, row in rows.iterrows()]
     return await asyncio.gather(*tasks)
 
-async def run_tomi_experiments(batch_size: int = 10, save_simulation: bool = False, model_name: str = "gpt-4-mini") -> None:
+async def run_tomi_experiments(batch_size: int = 10, save: bool = False, model_name: str = "gpt-4-mini", mode: str = "vanilla") -> None:
     # Read the Percept-ToMi dataset
     tomi_data = pd.read_csv(Path("data/Percept-ToMi.csv"))
     print(f"Total number of experiments: {len(tomi_data)}")
@@ -93,7 +152,7 @@ async def run_tomi_experiments(batch_size: int = 10, save_simulation: bool = Fal
         batch_data = tomi_data.iloc[start_idx:end_idx]
         
         print(f"\nProcessing batch {batch_idx + 1}/{num_batches} (experiments {start_idx}-{end_idx})")
-        results = await run_batch(batch_data, save_simulation, model_name)
+        results = await run_batch(batch_data, mode=mode, model_name=model_name, save=save)
         
         # Process results
         for is_correct, result in results:
@@ -105,7 +164,38 @@ async def run_tomi_experiments(batch_size: int = 10, save_simulation: bool = Fal
             print(f"Correct answer: {result['correct_answer']}")
             print(f"Current correct count: {correct_count}")
 
+async def run_simple_experiment(story: str, question: str, model_name: str = "gpt-4-mini") -> str:
+    """Run a simple ToM experiment with just a story and question.
+    
+    Args:
+        story: The story text
+        question: The question to ask about the story
+        model_name: Name of the model to use
+        
+    Returns:
+        The model's answer to the question
+    """
+    engine = ToMEngine(
+        agent_prompt="You are answering questions about a story. First reason about the question, then provide your answer in this format: <reasoning>(reasoning)</reasoning> <answer>(answer)</answer>",
+        model_name=model_name,
+    )
+    
+    # Initialize with a single agent and the story as an observation
+    await engine.initialize_simulation(["observer"], [(story, ["observer"])])
+    
+    # Get reasoning and answer from the model
+    reasoning, answer = await engine.reason_about_belief(
+        question, 
+        ["observer"],
+        target_agent="observer"
+    )
+    
+    return answer
+
+# Add to main for testing
 if __name__ == "__main__":
     import asyncio
     print(f"Running experiments")
-    asyncio.run(run_tomi_experiments(batch_size=1, save_simulation=True, model_name="o1-2024-12-17"))
+    
+    # Run the original experiments
+    asyncio.run(run_tomi_experiments(batch_size=4, save=True, model_name="o1-2024-12-17", mode="vanilla"))
