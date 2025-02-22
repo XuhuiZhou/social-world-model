@@ -41,9 +41,11 @@ plugins = [
     "pydantic.mypy",
     "pydantic.v1.mypy"
 ]
+exclude = ["data/*", "hidden_utils/*"]
+
 
 [tool.uv.sources]
-sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "feature/add_o1" }
+sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "main" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

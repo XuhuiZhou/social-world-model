@@ -2,9 +2,10 @@ from typing import Dict, List, Optional, Tuple
 from sotopia.generation_utils import PydanticOutputParser
 from pydantic import BaseModel, Field
 from social_world_model.agents import LLMAgent
-from social_world_model.database import Observation
+from social_world_model.database import Observation, SocializedContext
 from sotopia.generation_utils import agenerate
 from typing import Any
+import json
 
 class ObsDistribution(BaseModel):
     agents_per_observation: List[Tuple[str, List[str]]] = Field(description="The list of observations with a list of agents that perceive the observation")
@@ -21,11 +22,27 @@ class Simulation(BaseModel):
     answer: str = Field(description="The answer that the agent gave to the question")
 
 class ToMEngine:
-    def __init__(self, agent_prompt: str = "", model_name: str = "gpt-4o-mini") -> None:
-        self.agents: Dict[str, LLMAgent] = {}
-        self.agent_prompt: str = agent_prompt # The overall prompt for the agents to follow
-        self.current_time = 0
+    def __init__(
+        self,
+        agent_prompt: str = "",
+        model_name: str = "gpt-3.5-turbo",
+        temperature: float = 0.7,
+    ):
+        """Initialize ToM engine.
+        
+        Args:
+            example: Example scenario dictionary
+            example_analysis: Example analysis dictionary
+            model_name: Name of the model to use
+            temperature: Temperature parameter for generation
+            max_tokens: Maximum tokens for generation
+            top_p: Top p parameter for generation
+        """
+        self.agent_prompt = agent_prompt
         self.model_name = model_name
+        self.temperature = temperature
+        self.agents: Dict[str, LLMAgent] = {}
+        self.current_time = 0
         self.simulation: Simulation = Simulation(
             agents=[],
             agent_memories={},
@@ -123,3 +140,38 @@ class ToMEngine:
         self.simulation.answer = answer
         self.simulation.question = question
         return reasoning, answer
+
+    async def socialize_context(self, context: str, example_analysis: str) -> SocializedContext:
+        """
+        Analyzes and socializes context for the simulation.
+        
+        Args:
+            context: A string describing the social context/situation
+            
+        Returns:
+            SocializedContext object containing the analyzed context
+        """
+        template = (
+            "Please analyze the following narrative.\n\n"
+            "Context: {context}\n\n"
+        )
+        
+        input_values = {"context": context}
+        
+        if example_analysis:
+            template += "Example analysis: {example_analysis}\n\n"
+            input_values["example_analysis"] = example_analysis
+            
+        template += "Follow these format instructions:\n{format_instructions}"
+        socialized_context = await agenerate(
+            model_name=self.model_name,
+            template=template,
+            input_values=input_values,
+            temperature=self.temperature,
+            output_parser=PydanticOutputParser(pydantic_object=SocializedContext),
+            structured_output=True
+        )
+        # save the socialized context to a file
+        with open("socialized_context.json", "w") as f:
+            json.dump(socialized_context.model_dump(), f, indent=2)
+        return socialized_context
