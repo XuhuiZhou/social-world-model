@@ -10,6 +10,10 @@ from typing import Any
 import os
 from pandas import Series
 from sotopia.generation_utils import StrOutputParser, agenerate
+from social_world_model.tom_engine import SocializedContext
+import asyncio
+
+# Set up logging
 
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 logging.basicConfig(
@@ -21,6 +25,25 @@ logging.basicConfig(
     ],
 )
 
+def dictlize(d: dict[str, Any]) -> dict[str, Any]:
+    """Convert a list of observations/actions into a dictionary format.
+    
+    Args:
+        d: Input data that may contain lists of "key: value" strings
+        
+    Returns:
+        Transformed dictionary with nested dictionaries instead of lists
+    """
+    socialized_context = d['socialized_context']
+    for step in socialized_context:
+        for key, value in step.items():
+            if key in ['observations', 'actions'] and isinstance(value, list):
+                step[key] = {}
+                for item in value:
+                    if isinstance(item, str) and ':' in item:
+                        k, v = item.split(':', 1)
+                        step[key][k.strip()] = v.strip()
+    return d
 
 async def run_single_experiment_vanilla(row, model_name: str = "gpt-4-mini", save_result: bool = False) -> tuple[bool, dict[str, Any]]: # type: ignore
     """A simplified version of run_single_experiment that just uses direct LLM generation.
@@ -101,41 +124,24 @@ async def run_single_experiment(row, save_simulation: bool = False, model_name: 
             row['char2'] = ""
     observation_with_perceivers = [] 
     engine = ToMEngine(
-        agent_prompt="You will be asking some questions about your beliefs. Assume that you can perceive every scene in your location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore.\
+        agent_prompt="You will be asking some questions about your beliefs. The previous history of the interaction below is your memory (i.e., you perceive the entire history of the interaction). Assume that you can perceive every scene in your location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore.\
 You need to first reason about the question (majorly focusing where the object has been moved to, and answer the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A') and then respond to the question with the following format:<reasoning>(reasoning)</reasoning> <answer>(answer; the answer should be just the position and nothing else)</answer>",
         model_name=model_name,
     )
     if 'socialized_context' in row and str(row['socialized_context']) != "nan":
-        socialized_context = row['socialized_context']
-        # Only process 'socialized_context' key if it exists in the dictionary
-        if isinstance(socialized_context, dict):
-            agent_names = socialized_context['agents_names']
-            # Parse socialized context for observations
-            observation_with_perceivers = []
-            for context_step in socialized_context['socialized_context']:
-                # Process state if it's not "none"
-                if context_step['state'] != "none":
-                    # Get all agents who observed this state
-                    perceivers = []
-                    for obs in context_step['observations']:
-                        agent, observation = [x.strip() for x in obs.split(":")]
-                        if observation == "[SAME AS STATE]":
-                            perceivers.append(agent)
-                    if perceivers:
-                        observation_with_perceivers.append((context_step['state'], perceivers))
-                
-                # Process actions if they're not "none"
-                for action in context_step['actions']:
-                    agent, action_text = [x.strip() for x in action.split(":")]
-                    if action_text != "none":
-                        # For actions, use the same observers as the current state
-                        current_observers = [
-                            obs.split(":")[0].strip()
-                            for obs in context_step['observations']
-                            if obs.split(":")[1].strip() == "[SAME AS STATE]"
-                        ]
-                        if current_observers:
-                            observation_with_perceivers.append((action_text, current_observers))
+        socialized_context = dictlize(row['socialized_context'])
+        agent_names = socialized_context['agents_names']
+        socialized_events = socialized_context['socialized_context']
+        if row['char2'] and str(row['char2'])!="nan":
+            imagined_socialized_events = []
+            for index, event in enumerate(socialized_events):
+                if event['observations'][row['char1']] == "none":
+                    if index > 0:
+                        socialized_events[index-1]['actions'][row['char2']] = "none"
+                else:
+                    imagined_socialized_events.append(event)
+            socialized_context['socialized_context'] = imagined_socialized_events
+        await engine.initialize_simulation_from_socialized_context(socialized_context)
     else:
         for story_with_perceivers in eval(row['story_with_perceivers']):
             for observation, perceivers in story_with_perceivers.items():
@@ -144,12 +150,11 @@ You need to first reason about the question (majorly focusing where the object h
                     observation += f"({', '.join(perceivers)} were/was there)"
                 observation_with_perceivers.append((observation, perceivers))
         agent_names = list(set([agent for agents in eval(row['perceivers']) for agent in agents]))
-    if row['char2'] and str(row['char2'])!="nan":
-        for observation, perceivers in observation_with_perceivers:
-            if row['char2'] in perceivers and row['char1'] not in perceivers:
-                observation_with_perceivers.remove((observation, perceivers))
-    await engine.initialize_simulation(agent_names, observation_with_perceivers)
-    breakpoint()
+        if row['char2'] and str(row['char2'])!="nan":
+            for observation, perceivers in observation_with_perceivers:
+                if row['char2'] in perceivers and row['char1'] not in perceivers:
+                    observation_with_perceivers.remove((observation, perceivers))
+        await engine.initialize_simulation(agent_names, observation_with_perceivers)
     if row['char2'] and str(row['char2'])!="nan":
         object = row["question"].split("searches for")[1].split("?")[0]
         restructure_question = f"Where will you look for the {object}?"
@@ -179,9 +184,10 @@ You need to first reason about the question (majorly focusing where the object h
         if not os.path.exists(f"data/simulations_tomi/{model_name}"):
             os.makedirs(f"data/simulations_tomi/{model_name}")
         with open(f"data/simulations_tomi/{model_name}/{row['index']}.json", "w") as f:
-            simulation_dict["correct_answer"] = correct_answer
-            simulation_dict["original_question"] = row['question']
-            json.dump(simulation_dict, f)
+            result["transformed_question"] = simulation_dict["question"]
+            result["memory"] = simulation_dict["agent_memories"]
+            result["agents"] = simulation_dict["agents"]
+            json.dump(result, f)
     
     return is_correct, result
 
@@ -193,7 +199,7 @@ async def run_batch(rows: pd.DataFrame, save: bool = False, model_name: str = "g
         tasks = [run_single_experiment(row, save, model_name) for _, row in rows.iterrows()]
     return await asyncio.gather(*tasks)
 
-async def run_tomi_experiments(dataset_path: str, batch_size: int = 10, save: bool = False, model_name: str = "gpt-4-mini", mode: str = "vanilla") -> None:
+async def run_tomi_experiments(dataset_path: str, batch_size: int = 10, save: bool = False, model_name: str = "gpt-4-mini", mode: str = "vanilla", specific_indices: list[int] = None, critic_mode: bool = False) -> None:
     # Check if dataset_path is a folder or file
     path = Path(dataset_path)
     if path.is_dir():
@@ -201,6 +207,8 @@ async def run_tomi_experiments(dataset_path: str, batch_size: int = 10, save: bo
         json_files = list(path.glob('*.json'))
         data_list = []
         for json_file in json_files:
+            if specific_indices and int(json_file.stem) not in specific_indices:
+                continue
             with open(json_file, 'r') as f:
                 data = json.load(f)
                 # Convert JSON data to match DataFrame structure
@@ -216,6 +224,42 @@ async def run_tomi_experiments(dataset_path: str, batch_size: int = 10, save: bo
                 }
                 data_list.append(data_entry)
         tomi_data = pd.DataFrame(data_list)
+        if critic_mode:
+            example_analysis = json.load(open("data/social_contexts_example/tomi.json"))
+            example_patterns = open("data/social_contexts_example/tomi_patterns.txt").read()
+            tom_engine = ToMEngine(model_name=model_name)
+            # Process in batches for critique operations
+            critique_batch_size = batch_size
+            num_critique_batches = (len(tomi_data) + critique_batch_size - 1) // critique_batch_size
+            improved_contexts = []
+            
+            for batch_idx in range(num_critique_batches):
+                start_idx = batch_idx * critique_batch_size
+                end_idx = min((batch_idx + 1) * critique_batch_size, len(tomi_data))
+                batch_data = tomi_data.iloc[start_idx:end_idx]
+                # Create tasks for current batch of critique operations
+                critique_tasks = [
+                    tom_engine.critique_and_improve_context(
+                        SocializedContext(**row['socialized_context']),
+                        context=row['story'],
+                        example_analysis=example_analysis,
+                        example_patterns=example_patterns,
+                    )
+                    for _, row in batch_data.iterrows()
+                ]
+                
+                # Execute batch tasks concurrently
+                batch_improved_contexts = await asyncio.gather(*critique_tasks)
+                improved_contexts.extend(batch_improved_contexts)
+                
+                print(f"Processed critique batch {batch_idx + 1}/{num_critique_batches}")
+            
+            # Update the dataframe with improved contexts
+            for (index, row), improved_context in zip(tomi_data.iterrows(), improved_contexts):
+                assert isinstance(improved_context, SocializedContext)
+                tomi_data.at[index, 'socialized_context'] = improved_context.model_dump()
+                with open(f"data/fixed_socialized_contexts/{row['index']}.json", "w") as f:
+                    json.dump(improved_context.model_dump(), f, indent=2)
     else:
         # Read CSV file as before
         tomi_data = pd.read_csv(dataset_path).fillna("")
@@ -247,8 +291,22 @@ async def run_tomi_experiments(dataset_path: str, batch_size: int = 10, save: bo
 # Add to main for testing
 if __name__ == "__main__":
     import asyncio
+    import argparse
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--specific_indices', nargs='+', type=int, help='List of specific experiment indices to run')
+    args = parser.parse_args()
+    
     print(f"Running experiments")
     
     # Run the original experiments
 # asyncio.run(run_tomi_experiments(dataset_path="./data/rephrased_tomi_test_600.csv", batch_size=4, save=True, model_name="o1-2024-12-17", mode="vanilla"))
-asyncio.run(run_tomi_experiments(dataset_path="./data/tomi_results/simulation_o1-2024-12-17_rephrased_tomi_test_600.csv", batch_size=1, save=True, model_name="o1-2024-12-17", mode="simulation"))
+    asyncio.run(run_tomi_experiments(
+        dataset_path="./data/tomi_results/simulation_o1-2024-12-17_rephrased_tomi_test_600.csv", 
+        batch_size=5,
+        save=True,
+        model_name="o1-2024-12-17",
+        mode="simulation",
+        specific_indices=args.specific_indices,
+        critic_mode=True
+    ))

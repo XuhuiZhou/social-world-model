@@ -66,7 +66,6 @@ class ToMBenchmarkRunner:
             result = await self._run_simulation(row, benchmark_type, example_analysis_file, pure_simulation=True)
         else:
             result = await self._run_simulation(row, benchmark_type, example_analysis_file)
-        breakpoint()
         if save_result:
             result['socialized_context'] = result['socialized_context'].model_dump()
             self._save_result(result, result_path)
@@ -157,7 +156,7 @@ Question: {question}
                 existing_result = json.load(f)
                 if 'socialized_context' in existing_result:
                     # Convert the loaded dict back to SocializedContext object
-                    row['socialized_context'] = existing_result['socialized_context']
+                    row['socialized_context'] = SocializedContext(**existing_result['socialized_context'])
                     return await self._run_vanilla(row, benchmark_type)
         
         # If no existing simulation found, run new simulation
@@ -168,10 +167,12 @@ Question: {question}
         
         if benchmark_type == "tomi":
             context = " ".join(eval(row['story']))
+            engine.set_task_specific_instructions("You are dissecting the TOMI scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object.")
             question = row['question']
         elif benchmark_type == "fantom":
             # Process FANToM-specific observation structure
             context = row['context']
+            engine.set_task_specific_instructions("You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again.")
             question = row['complete_question']
 
         if example_analysis_file:
@@ -180,6 +181,7 @@ Question: {question}
             example_analysis = ""
         socialized_context = await engine.socialize_context(context, example_analysis)
         row['socialized_context'] = socialized_context
+        breakpoint()
         result = await self._run_vanilla(row, benchmark_type, pure_simulation=pure_simulation)
         return result
 

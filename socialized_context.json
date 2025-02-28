@@ -1,164 +1,148 @@
 {
   "agents_names": [
-    "Sophia",
-    "Elizabeth",
-    "Emily"
+    "Alexander",
+    "Lucas",
+    "Liam"
   ],
   "socialized_context": [
     {
-      "state": "none",
+      "timestep": "T1",
+      "state": "No one is in the staircase. The container (storing celery) is outside. The suitcase is outside. The raincoat is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: none"
       ],
       "actions": [
-        "Sophia: Sophia is located in the sunroom.",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: shows up at the staircase",
+        "Lucas: none",
+        "Liam: none"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom.",
+      "timestep": "T2",
+      "state": "Alexander is in the staircase; everyone else (Lucas, Liam) is still outside. The container (storing celery) is outside. The suitcase is outside. The raincoat is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: You are in an empty staircase with no objects",
+        "Lucas: You see the raincoat outside with you",
+        "Liam: none"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: Elizabeth entered the sunroom. Elizabeth is nuts about the cherry.",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: is concerned by the raincoat",
+        "Liam: none"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry.",
+      "timestep": "T3",
+      "state": "Alexander remains in the staircase. Lucas is still outside, concerned by the raincoat. Liam is outside. The container (with celery) is outside. The suitcase is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: none"
+        "Alexander: You see the empty staircase. No one else is here; no container or suitcase present.",
+        "Lucas: You see the raincoat outside with you",
+        "Liam: none"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: Emily arrived at the sunroom."
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: tiptoes into the staircase"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom.",
+      "timestep": "T4",
+      "state": "Alexander and Liam are together in the staircase. Lucas remains outside with the raincoat. The container (with celery) is outside. The suitcase is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Liam in the staircase with you, but no other objects.",
+        "Lucas: You see the raincoat outside with you",
+        "Liam: You see Alexander in the staircase with you"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: Emily emerged from the sunroom."
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: is disconcerted by the watermelon"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom.",
+      "timestep": "T5",
+      "state": "Alexander and Liam are in the staircase. Lucas is outside with the raincoat (he is concerned by it). The container (with celery) is outside. The suitcase is outside. The watermelon is outside (Liam is disconcerted by it).",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Liam in the staircase",
+        "Lucas: You see the raincoat outside",
+        "Liam: You see Alexander in the staircase"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: tiptoes into the staircase",
+        "Liam: none"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate.",
+      "timestep": "T6",
+      "state": "Alexander, Lucas, and Liam are all in the staircase. The container (with celery) is outside. The suitcase is outside. The raincoat is outside. The watermelon is outside. Lucas is still concerned by the raincoat; Liam is disconcerted by the watermelon.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Lucas and Liam in the staircase",
+        "Lucas: You see Alexander and Liam in the staircase",
+        "Liam: You see Alexander and Lucas in the staircase"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: none"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate.",
+      "timestep": "T7",
+      "state": "All three agents (Alexander, Lucas, Liam) remain in the staircase. Now the container (storing celery) is placed in the staircase. The suitcase is still outside. Raincoat and watermelon remain outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Lucas, Liam, and the container with celery in the staircase",
+        "Lucas: You see Alexander, Liam, and the container with celery in the staircase",
+        "Liam: You see Alexander, Lucas, and the container with celery in the staircase"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: Elizabeth walked out of the sunroom.",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: none"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate. Elizabeth walked out of the sunroom.",
+      "timestep": "T8",
+      "state": "Alexander, Lucas, Liam, and the container (with celery) are in the staircase. A suitcase is also in the staircase (available for interaction). The raincoat is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Lucas, Liam, the container with celery, and a suitcase",
+        "Lucas: You see Alexander, Liam, the container with celery, and a suitcase",
+        "Liam: You see Alexander, Lucas, the container with celery, and a suitcase"
       ],
       "actions": [
-        "Sophia: Sophia set the shirt in the box.",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: leads the celery to the suitcase"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate. Elizabeth walked out of the sunroom. Sophia set the shirt in the box. The sunroom has the box.",
+      "timestep": "T9",
+      "state": "Alexander, Lucas, Liam, container, and suitcase are all in the staircase. The celery is now inside the suitcase. The raincoat is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Lucas, Liam, the container, and the suitcase (with celery inside)",
+        "Lucas: You see Alexander, Liam, the container, and the suitcase (with celery inside)",
+        "Liam: You see Alexander, Lucas, the container, and the suitcase (with celery inside)"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: none"
+        "Alexander: none",
+        "Lucas: none",
+        "Liam: none"
       ]
     },
     {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate. Elizabeth walked out of the sunroom. Sophia set the shirt in the box. The sunroom has the box.",
+      "timestep": "T10",
+      "state": "Alexander, Lucas, Liam, container, and suitcase (with celery) are in the staircase. The raincoat is outside. The watermelon is outside.",
       "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
+        "Alexander: You see Lucas, Liam, container, and suitcase (with celery)",
+        "Lucas: You see Alexander, Liam, container, and suitcase (with celery)",
+        "Liam: You see Alexander, Lucas, container, and suitcase (with celery)"
       ],
       "actions": [
-        "Sophia: none",
-        "Elizabeth: none",
-        "Emily: none"
-      ]
-    },
-    {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate. Elizabeth walked out of the sunroom. Sophia set the shirt in the box. The sunroom has the box. Emily despises the green_pepper.",
-      "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
-      ],
-      "actions": [
-        "Sophia: Sophia came out of the sunroom.",
-        "Elizabeth: none",
-        "Emily: none"
-      ]
-    },
-    {
-      "state": "Sophia is located in the sunroom. Elizabeth entered the sunroom. Elizabeth is nuts about the cherry. Emily arrived at the sunroom. Emily emerged from the sunroom. The shirt is deposited in the crate. The sunroom is keeping the crate. Elizabeth walked out of the sunroom. Sophia set the shirt in the box. The sunroom has the box. Emily despises the green_pepper. Sophia came out of the sunroom.",
-      "observations": [
-        "Sophia: [SAME AS STATE]",
-        "Elizabeth: [SAME AS STATE]",
-        "Emily: [SAME AS STATE]"
-      ],
-      "actions": [
-        "Sophia: none",
-        "Elizabeth: Elizabeth approached the sunroom.",
-        "Emily: none"
+        "Alexander: came out of the staircase",
+        "Lucas: none",
+        "Liam: none"
       ]
     }
   ]
