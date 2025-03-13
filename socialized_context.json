@@ -1,148 +1,505 @@
 {
   "agents_names": [
-    "Alexander",
-    "Lucas",
-    "Liam"
+    "Jamal",
+    "Riley",
+    "Cara",
+    "Tabitha"
   ],
   "socialized_context": [
     {
-      "timestep": "T1",
-      "state": "No one is in the staircase. The container (storing celery) is outside. The suitcase is outside. The raincoat is outside. The watermelon is outside.",
+      "timestep": "1",
+      "state": "none",
       "observations": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: shows up at the staircase",
-        "Lucas: none",
-        "Liam: none"
+        "Jamal: Says: 'Hey guys, I think I\u2019ve found the best workout instructor. His name is Vince.'",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T2",
-      "state": "Alexander is in the staircase; everyone else (Lucas, Liam) is still outside. The container (storing celery) is outside. The suitcase is outside. The raincoat is outside. The watermelon is outside.",
+      "timestep": "2",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You are in an empty staircase with no objects",
-        "Lucas: You see the raincoat outside with you",
-        "Liam: none"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: is concerned by the raincoat",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: Says: 'Really? What makes him so extraordinary, Jamal?'",
+        "Cara: none",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T3",
-      "state": "Alexander remains in the staircase. Lucas is still outside, concerned by the raincoat. Liam is outside. The container (with celery) is outside. The suitcase is outside. The watermelon is outside.",
+      "timestep": "3",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see the empty staircase. No one else is here; no container or suitcase present.",
-        "Lucas: You see the raincoat outside with you",
-        "Liam: none"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: tiptoes into the staircase"
+        "Jamal: Says: 'Well, he is ex-army and understands fitness like no one else. He focuses not just on physical endurance but also mental strength.'",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T4",
-      "state": "Alexander and Liam are together in the staircase. Lucas remains outside with the raincoat. The container (with celery) is outside. The suitcase is outside. The watermelon is outside.",
+      "timestep": "4",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Liam in the staircase with you, but no other objects.",
-        "Lucas: You see the raincoat outside with you",
-        "Liam: You see Alexander in the staircase with you"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: is disconcerted by the watermelon"
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'Sounds impressive, though I\u2019ve been going to this instructor named Laura. She\u2019s absolutely brilliant.'",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T5",
-      "state": "Alexander and Liam are in the staircase. Lucas is outside with the raincoat (he is concerned by it). The container (with celery) is outside. The suitcase is outside. The watermelon is outside (Liam is disconcerted by it).",
+      "timestep": "5",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Liam in the staircase",
-        "Lucas: You see the raincoat outside",
-        "Liam: You see Alexander in the staircase"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: tiptoes into the staircase",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: Says: 'What does Laura do differently?'",
+        "Cara: none",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T6",
-      "state": "Alexander, Lucas, and Liam are all in the staircase. The container (with celery) is outside. The suitcase is outside. The raincoat is outside. The watermelon is outside. Lucas is still concerned by the raincoat; Liam is disconcerted by the watermelon.",
+      "timestep": "6",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Lucas and Liam in the staircase",
-        "Lucas: You see Alexander and Liam in the staircase",
-        "Liam: You see Alexander and Lucas in the staircase"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'She tends to focus on a combination of yoga, Pilates and HIIT for a full-body workout. I\u2019ve seen huge improvements in my strength and flexibility since training with her.'",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T7",
-      "state": "All three agents (Alexander, Lucas, Liam) remain in the staircase. Now the container (storing celery) is placed in the staircase. The suitcase is still outside. Raincoat and watermelon remain outside.",
+      "timestep": "7",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Lucas, Liam, and the container with celery in the staircase",
-        "Lucas: You see Alexander, Liam, and the container with celery in the staircase",
-        "Liam: You see Alexander, Lucas, and the container with celery in the staircase"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: Says: 'That sounds great as well. My favorite, though, has to be Jonathan. He\u2019s a sports injury rehab specialist, so he really gets how to work out without causing any damage. His routines are vigorous but it actually feels good at the end of the session.'",
+        "Cara: none",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T8",
-      "state": "Alexander, Lucas, Liam, and the container (with celery) are in the staircase. A suitcase is also in the staircase (available for interaction). The raincoat is outside. The watermelon is outside.",
+      "timestep": "8",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Lucas, Liam, the container with celery, and a suitcase",
-        "Lucas: You see Alexander, Liam, the container with celery, and a suitcase",
-        "Liam: You see Alexander, Lucas, the container with celery, and a suitcase"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: leads the celery to the suitcase"
+        "Jamal: Says: 'Jonathan seems like a perfect fit for someone like me who can be a bit reckless sometimes.'",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T9",
-      "state": "Alexander, Lucas, Liam, container, and suitcase are all in the staircase. The celery is now inside the suitcase. The raincoat is outside. The watermelon is outside.",
+      "timestep": "9",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Lucas, Liam, the container, and the suitcase (with celery inside)",
-        "Lucas: You see Alexander, Liam, the container, and the suitcase (with celery inside)",
-        "Liam: You see Alexander, Lucas, the container, and the suitcase (with celery inside)"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: none",
-        "Lucas: none",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'As does Vince for me. I need someone to help build my mental strength.'",
+        "Tabitha: none"
       ]
     },
     {
-      "timestep": "T10",
-      "state": "Alexander, Lucas, Liam, container, and suitcase (with celery) are in the staircase. The raincoat is outside. The watermelon is outside.",
+      "timestep": "10",
+      "state": "[SAME AS LAST ACTION]",
       "observations": [
-        "Alexander: You see Lucas, Liam, container, and suitcase (with celery)",
-        "Lucas: You see Alexander, Liam, container, and suitcase (with celery)",
-        "Liam: You see Alexander, Lucas, container, and suitcase (with celery)"
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
       ],
       "actions": [
-        "Alexander: came out of the staircase",
-        "Lucas: none",
-        "Liam: none"
+        "Jamal: none",
+        "Riley: Says: 'And Laura\u2019s routines sound like a change I could use. I guess it just goes to show, the best workout instructor really depends on our individual needs and goals.'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "11",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: [SAME AS STATE]",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: Says: 'I actually need to head out. I have scheduled a haircut appointment I need to prepare for. It was nice discussing our workout experiences though. See you guys later!'",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "12",
+      "state": "Jamal leaves the conversation",
+      "observations": [
+        "Jamal: none",
+        "Riley: I see that Jamal is leaving",
+        "Cara: I see that Jamal is leaving",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'Yeah, see you later, Jamal!'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "13",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'Bye Jamal, don\u2019t get too stylish now!'",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "14",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'Alright, Cara, so what\u2019s been your most challenging workout experience?'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "15",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'Oh boy, there was this one time Laura introduced this new Pilates routine and it was the hardest session I\u2019ve ever done. My body was sore for days afterwards. What about you, Riley?'",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "16",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'I think when Jonathan introduced plyometrics in my rehab workout. I never knew jumping around could be so tiring. It was a real challenge, but it feels great every time I surpass my limits.'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "17",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'Absolutely, those days are difficult, but they\u2019re the ones we remember the most, right?'",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "18",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'Couldn\u2019t have said it better, Cara. The hardest days often lead to the greatest gains.'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "19",
+      "state": "Tabitha enters the conversation",
+      "observations": [
+        "Jamal: none",
+        "Riley: I see Tabitha joining",
+        "Cara: I notice Tabitha has arrived",
+        "Tabitha: I just arrived and see Riley and Cara talking about challenging workouts"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: Says: 'Hey guys, what are you discussing?'"
+      ]
+    },
+    {
+      "timestep": "20",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'Hey Tabitha, we were just sharing our most challenging workout experiences. How about you?'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "21",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: Says: 'Well, my instructor Sarah introduced kickboxing into my workout last month and it was definitely a challenge!'"
+      ]
+    },
+    {
+      "timestep": "22",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'Kickboxing sounds exciting!'",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "23",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'It does! So Tabitha, seeing as we\u2019re talking about our fitness trainers, what do you find unique about Sarah\u2019s methods?'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "24",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: Says: 'She brings a personalized approach towards fitness. She designs workouts based on my strengths and weaknesses, which I think is fantastic.'"
+      ]
+    },
+    {
+      "timestep": "25",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'That does sound fantastic. It really reiterates the fact that the best workout instructor is the one who understands our personal needs and works with us to achieve our goals.'",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "26",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'Absolutely! We\u2019ve all had some experience with different types of instructors and training methods, and it\u2019s clear that different things work for different people. What turned out to be the biggest progress for you, Tabitha?'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "27",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: Says: 'To be honest, initially, even lifting light weights was a task for me. But Sarah helped me build it up gradually and look at me now, I\u2019m stronger than ever.'"
+      ]
+    },
+    {
+      "timestep": "28",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: Says: 'That\u2019s great to hear, Tabitha.'",
+        "Cara: none",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "29",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: Says: 'Truly, progress might be slow but it\u2019s the constant betterment that counts. Just like challenging workouts, we value progress the most when it has been hard-earned.'",
+        "Tabitha: none"
+      ]
+    },
+    {
+      "timestep": "30",
+      "state": "[SAME AS LAST ACTION]",
+      "observations": [
+        "Jamal: none",
+        "Riley: [SAME AS STATE]",
+        "Cara: [SAME AS STATE]",
+        "Tabitha: [SAME AS STATE]"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: Says: 'Couldn\u2019t agree more. Keep hustling, guys!'"
+      ]
+    },
+    {
+      "timestep": "31",
+      "state": "Conversation ends",
+      "observations": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
+      ],
+      "actions": [
+        "Jamal: none",
+        "Riley: none",
+        "Cara: none",
+        "Tabitha: none"
       ]
     }
   ]

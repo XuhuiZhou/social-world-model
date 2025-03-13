@@ -1,11 +1,12 @@
 from social_world_model.database import Observation, AgentAction
 from sotopia.generation_utils import agenerate, StrOutputParser
 
-class LLMAgent():
+
+class LLMAgent:
     def __init__(
         self,
         agent_name: str,
-        input_channels: list[str] = ['observation'],
+        input_channels: list[str] = ["observation"],
         output_channel: str = "action",
         query_interval: int = 0,
         node_name: str = "llm_agent",

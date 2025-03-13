@@ -1,22 +1,54 @@
 from pydantic import Field, BaseModel
 from sotopia.messages import ActionType
 
+
 class SocializedStructure(BaseModel):
-    timestep: str = Field(description="The timestep of the current socialized structure, it could be a number or a description of the time of the state.")
-    state: str = Field(description="The current state of the world (including all the agents) at this timestep. Important note: this is the state before the action is taken (e.g., the initial state could be 'none' at the beginning if there are no prior contexts before the interaction starts).")
-    observations: list[str] = Field(description="The observations for each agent in the social world at this timestep (similar to the definition in partial observable Markov Decision Process, observation is derived from the obervation function with the current state as the argument). Note that the different agents may have different observations. The observation would go into corresponding agent's memory, so make sure the observation is clear for the agent to understand (first person perspective narrative is preferred). If it is the same as the current state, use the special token '[SAME AS STATE]' to indicate the observation (but don't overuse it). Put 'none' if the agent does not observe anything at this timestep. Important note: this is the observation before the action is taken (e.g., the observation could be 'none' at the beginning if there are no prior contexts before the interaction starts). The format for each entry in the list is: 'agent_name: observation'")
-    actions: list[str] = Field(description="The actions for each agent in the social world at this timestep. The length of the list should be the same as the number of agents. Put 'none' if the agent does not take any action at this timestep. The format for each entry in the list is: 'agent_name: action'")
+    timestep: str = Field(
+        default="",
+        description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state.",
+    )
+    state: str = Field(
+        description="The current state of the world (including all the agents) at this timestep. Important note: this is the state before the action is taken (e.g., the initial state could be 'none' at the beginning if there are no prior contexts before the interaction starts)."
+    )
+    observations: list[str] = Field(
+        description="The observations for each agent in the social world at this timestep (similar to the definition in partial observable Markov Decision Process, observation is derived from the obervation function with the current state as the argument). Note that the different agents may have different observations. The observation would go into corresponding agent's memory, so make sure the observation is clear for the agent to understand (first person perspective narrative is preferred). If it is the same as the current state, use the special token '[SAME AS STATE]' to indicate the observation (but don't overuse it). Put 'none' if the agent does not observe anything at this timestep. Important note: this is the observation before the action is taken (e.g., the observation could be 'none' at the beginning if there are no prior contexts before the interaction starts). The format for each entry in the list is: 'agent_name: observation'"
+    )
+    actions: list[str] = Field(
+        description="The actions for each agent in the social world at this timestep. The length of the list should be the same as the number of agents. Put 'none' if the agent does not take any action at this timestep. The format for each entry in the list is: 'agent_name: action'"
+    )
 
     def to_natural_language(self, timestep: int) -> str:
-        return "At timestep " + str(timestep) + ":\nState: " + self.state + "\nObservations: " + "\n".join(self.observations) + "\nActions: " + "\n".join(self.actions)
+        return (
+            "At timestep "
+            + str(timestep)
+            + ":\nState: "
+            + self.state
+            + "\nObservations: "
+            + "\n".join(self.observations)
+            + "\nActions: "
+            + "\n".join(self.actions)
+        )
+
 
 class SocializedContext(BaseModel):
     agents_names: list[str] = Field(description="The names of the agents")
     socialized_context: list[SocializedStructure] = Field(
-        description="A list of SocializedStructure objects, each representing a timestep of the social world"
+        description="A list of SocializedStructure objects, each representing a timestep of the social world. At the last timestep, all agents' actions should be 'none' as they have already completed the interaction."
     )
+
     def to_natural_language(self) -> str:
-        return "Agents involved in the conversation: " + ", ".join(self.agents_names) + ".\nSocialized context:\n" + "\n".join([structure.to_natural_language(timestep=index) for index, structure in enumerate(self.socialized_context)])
+        return (
+            "Agents involved in the conversation: "
+            + ", ".join(self.agents_names)
+            + ".\nSocialized context:\n"
+            + "\n".join(
+                [
+                    structure.to_natural_language(timestep=index)
+                    for index, structure in enumerate(self.socialized_context)
+                ]
+            )
+        )
+
 
 class Observation(BaseModel):
     agent_name: str = Field(description="the name of the agent")
