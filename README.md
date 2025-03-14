@@ -1,5 +1,10 @@
 # social-world-model
 use social simulation as a world model
+You need to set the environment variable `OPENAI_API_KEY` to use the API.
+You also need to `pip install uv` to run the following setup.
+You also need to have a `data` folder in the root of the project.
+And I think you are good to go.
+Let me know if you run into any issues.
 
 ## Setup
 
