@@ -5,7 +5,10 @@ import os
 from tqdm import tqdm
 import random
 from sotopia.generation_utils import StrOutputParser, agenerate
-from typing import Any
+from typing import Any, Optional
+from social_world_model.tom_engine import ToMEngine
+from .utils import dictlize
+import asyncio
 
 def str_to_list(s: str) -> list[str]:
     l = s.split(",")
@@ -97,7 +100,7 @@ Output only the numerical score between 0 and 1."""
         int_to_alphabet = {0: 'a', 1: 'b', 2: 'c', 3: 'd'}
         answer = int_to_alphabet[int(qa['correct_answer'])]
         response = model_response.lower()
-        if response.startswith("(" + answer + ")") or response.startswith(answer + ")") or response.startswith(answer + ".") or response.startswith(answer + ":") or response.startswith(answer + ",") or "({})".format(answer) in response or answer == response: # a) or a. or a or (a)
+        if response.startswith("(" + answer + ")") or response.startswith(answer + ")") or response.startswith(answer + "."): # a) or a. or a
             return True
         else:
             return False
@@ -437,3 +440,171 @@ Output only the numerical score between 0 and 1."""
         report[target_scenario+':set:character_answer_consistency'] = [df1.mean(), len(df1)]
 
         return report
+
+async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) -> dict[str, Any]:  # type: ignore
+    """Run experiment in simulation mode for FANToM benchmark (using ToM engine for memory tracking).
+    
+    Args:
+        row: A pandas Series containing the question and other metadata
+        engine: The ToM engine instance to use for simulation
+        
+    Returns:
+        A dictionary containing the simulation results
+    """
+    assert engine is not None, "Engine must be provided"
+    # Get the socialized context from the engine
+    socialized_context = engine.existing_socialized_contexts[str(row['set_id'])]
+    socialized_context_dict = dictlize(socialized_context)
+    
+    # Extract character information from the question
+    question = row['complete_question']
+    question_type = row['question_type']
+    
+    # Set appropriate agent prompt based on question type
+    if question_type.startswith("tom:belief:"):
+        engine.set_agent_prompt(
+            "You will be asked a question about your beliefs based on a conversation you participated in. "
+            "The previous history of the interaction below is your memory. "
+            "Assume that you can only perceive conversations when you are present. "
+            "If you leave a conversation, you cannot perceive what happens until you return. "
+            "If the candidate answer is provided, the final answer should only be (a), (b), (c), or (d) etc."
+            "First reason about the question and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
+        )
+    elif question_type.endswith(":list"):
+        engine.set_agent_prompt(
+            "You will be asked a question about who knows certain information in a conversation. "
+            "The previous history of the interaction below is your memory. "
+            "Assume that people can only perceive conversations when they are present. "
+            "If someone leaves a conversation, they cannot perceive what happens until they return. "
+            "First reason about the question and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>[list of names]</answer>"
+        )
+    elif question_type.endswith(":binary"):
+        engine.set_agent_prompt(
+            "You will be asked a yes/no question about whether someone knows certain information. "
+            "The previous history of the interaction below is your memory. "
+            "Assume that people can only perceive conversations when they are present. "
+            "If someone leaves a conversation, they cannot perceive what happens until they return. "
+            "First reason about the question and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(yes or no)</answer>"
+        )
+    else:
+        engine.set_agent_prompt(
+            "You will be asked a question about a conversation you participated in. "
+            "The previous history of the interaction below is your memory. "
+            "First reason about the question and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
+        )
+    
+    # Initialize the simulation with the socialized context
+    await engine.initialize_simulation_from_socialized_context(socialized_context_dict)
+    
+    # Extract target agent if present in the question
+    target_agent = None
+    if question_type.startswith("tom:belief:"):
+        # Extract target agent from questions like "Where does Owen think that..."
+        if "where does" in question.lower() and "think" in question.lower():
+            target_agent = question.lower().split("where does")[1].split("think")[0].strip().capitalize()
+    elif question_type.endswith(":binary"):
+        # Extract target agent from questions like "Does Owen know..."
+        if question.startswith("Does "):
+            target_agent = question.removeprefix("Does ").split(" know")[0].strip()
+    
+    # Get agent names from the socialized context
+    agent_names = socialized_context_dict['agents_names']
+    
+    # Handle multiple-choice questions
+    answer_candidates = None
+    if question_type.endswith(":multiple-choice") and 'answer_choices' in row:
+        answer_candidates = row['choices_text']
+    
+    # Get reasoning and answer from the engine
+    if question_type.endswith(":list"):
+        # For list questions, we need to ask each agent individually and gather their responses
+        assert "List all the characters who know" in question, "List question must contain 'List all the characters who know'"
+        information_asked_about = question.split("\n")[0].strip()
+        question_for_each_agent = f"Do you know the answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well)"
+        
+        # Ask each agent individually using reason_about_belief
+        # Initialize lists to store results
+        all_reasoning = []
+        knowledgeable_agents = []
+        
+        # Create tasks for all agents
+        tasks = []
+        for agent_name in agent_names:
+            tasks.append(
+                engine.reason_about_belief(
+                    question_for_each_agent,
+                    agent_names,
+                    target_agent=agent_name,
+                    answer_candidates=None
+                )
+            )
+        
+        # Gather results from all agents concurrently
+        agent_results = await asyncio.gather(*tasks)
+        
+        # Process results
+        for agent_name, (agent_reasoning, agent_answer) in zip(agent_names, agent_results):
+            # Add agent's reasoning to the combined reasoning
+            all_reasoning.append(f"{agent_name}'s reasoning: {agent_reasoning}")
+            all_reasoning.append(f"{agent_name}'s answer: {agent_answer}")
+            
+            # Check if the agent knows the answer
+            answer_lower = agent_answer.lower()
+            if (answer_lower.startswith("yes") or 
+                "yes, " in answer_lower or 
+                " yes" in answer_lower or 
+                answer_lower == "yes" or
+                "i know" in answer_lower) and not (
+                "no" in answer_lower.split()[0] or
+                "don't know" in answer_lower or
+                "do not know" in answer_lower or
+                "doesn't know" in answer_lower or
+                "does not know" in answer_lower
+            ):
+                knowledgeable_agents.append(agent_name)
+        
+        # Combine all reasoning
+        combined_reasoning = "\n\n".join(all_reasoning)
+        
+        # Add a summary of the reasoning process
+        summary = f"Based on individual questioning of each agent, the following agents indicated they know the answer to '{information_asked_about}': {', '.join(knowledgeable_agents) if knowledgeable_agents else 'None'}"
+        reasoning = summary + "\n\n" + combined_reasoning
+        
+        # Format the answer as a list string
+        answer = f"[{', '.join(knowledgeable_agents)}]"
+        
+        # Update simulation state
+        engine.simulation.reasoning = reasoning
+        engine.simulation.answer = answer
+        engine.simulation.question = question
+    else:
+        # Use the existing method for other question types
+        reasoning, answer = await engine.reason_about_belief(
+            question, 
+            agent_names, 
+            target_agent=target_agent,
+            answer_candidates=answer_candidates
+        )
+    
+    # Get the simulation state
+    simulation = engine.get_simulation()
+    simulation_dict = simulation.dict()
+    
+    # Prepare the result
+    result = {
+        "question": question,
+        "question_type": question_type,
+        "reasoning": reasoning,
+        "answer": answer,
+        "correct_answer": row['correct_answer'],
+        "socialized_context": socialized_context,
+        "transformed_question": simulation_dict["question"],
+        "memory": simulation_dict["agent_memories"],
+        "agents": simulation_dict["agents"]
+    }
+    
+    return result

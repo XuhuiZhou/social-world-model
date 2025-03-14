@@ -13,6 +13,7 @@ from social_world_model.tom_engine import ToMEngine
 from social_world_model.database import SocializedContext
 from social_world_model.task_modules import (
     tomi_simulation,
+    fantom_simulation,
     load_existing_socialized_contexts,
     FantomEvalAgent,
 )
@@ -56,7 +57,7 @@ class ToMBenchmarkRunner:
 
     async def run_single_experiment(
         self,
-        row: pd.Series[Any],
+        row: pd.Series,  # type: ignore
         benchmark_type: BenchmarkType,
         save_result: bool = False,
         mode: ModeType = "vanilla",
@@ -108,7 +109,7 @@ class ToMBenchmarkRunner:
         return result
 
     async def _run_vanilla(
-        self, row: pd.Series[Any], benchmark_type: str, pure_context: bool = False
+        self, row: pd.Series, benchmark_type: str, pure_context: bool = False  # type: ignore
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
@@ -190,7 +191,7 @@ Question: {question}
 
     async def _run_socialized_context(
         self,
-        row: pd.Series[Any],
+        row: pd.Series,  # type: ignore
         benchmark_type: str,
         example_analysis_file: str = "",
         pure_context: bool = False,
@@ -239,7 +240,7 @@ Question: {question}
 
     async def _run_simulation(
         self,
-        row: pd.Series[Any],
+        row: pd.Series,  # type: ignore
         benchmark_type: str,
         engine: Optional[ToMEngine] = None,
     ) -> dict[str, Any]:
@@ -250,6 +251,8 @@ Question: {question}
                 str(row["index"]) in engine.existing_socialized_contexts
             ), f"Socialized context for index {row['index']} not found"
             result = await tomi_simulation(row, engine)
+        elif benchmark_type == "fantom":
+            result = await fantom_simulation(row, engine)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -257,7 +260,7 @@ Question: {question}
         return result
 
     def _parse_tomi_response(
-        self, response: str, row: pd.Series[Any]
+        self, response: str, row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
@@ -280,7 +283,7 @@ Question: {question}
         }
 
     def _create_fantom_result(
-        self, response: str, row: pd.Series[Any]
+        self, response: str, row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Create FANToM result dictionary."""
         try:

@@ -6,7 +6,7 @@ import json
 from typing import Any, Optional
 from .utils import dictlize
 
-async def tomi_simulation(row: pd.Series[Any], engine: Optional[ToMEngine] = None) -> dict[str, Any]:
+async def tomi_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) -> dict[str, Any]:  # type: ignore
     """Run experiment in simulation mode (using ToM engine for memory tracking)."""
     assert engine is not None, "Engine must be provided"
     socialized_context = engine.existing_socialized_contexts[str(row['index'])]
@@ -71,5 +71,4 @@ You need to first reason about the question (majorly focusing where the object h
         "memory": simulation_dict["agent_memories"],
         "agents": simulation_dict["agents"]
     }
-    breakpoint()
     return result

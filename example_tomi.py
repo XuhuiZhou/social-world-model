@@ -44,7 +44,7 @@ def dictlize(d: dict[str, Any]) -> dict[str, Any]:
 
 
 async def run_single_experiment_vanilla(
-    row: pd.Series[Any], model_name: str = "gpt-4-mini", save_result: bool = False
+    row: pd.Series, model_name: str = "gpt-4-mini", save_result: bool = False  # type: ignore
 ) -> tuple[bool, dict[str, Any]]:
     """A simplified version of run_single_experiment that just uses direct LLM generation.
 
@@ -106,7 +106,7 @@ async def run_single_experiment_vanilla(
 
 
 async def run_single_experiment(
-    row: pd.Series[Any], save_simulation: bool = False, model_name: str = "gpt-4-mini"
+    row: pd.Series, save_simulation: bool = False, model_name: str = "gpt-4-mini"  # type: ignore
 ) -> tuple[bool, dict[str, Any]]:
     # Extract char1 and char2 if they don't exist
     if not row["char1"] or str(row["char1"]) == "nan":

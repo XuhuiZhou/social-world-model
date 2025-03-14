@@ -137,14 +137,20 @@ class ToMEngine:
     ) -> None:
         socialized_events = socialized_context["socialized_context"]
         agent_names = socialized_context["agents_names"]
+        last_action = ""
         for agent_name in agent_names:
             self.add_agent(agent_name)
         for step in socialized_events:
+            if step['state'] == '[SAME AS LAST ACTION]':
+                step['state'] = last_action
             for agent_name, observation in step["observations"].items():
                 if observation == "none":
                     continue
                 if observation == "[SAME AS STATE]":
                     observation = step["state"]
+                # avoid adding the same action twice
+                if self.agents[agent_name].message_history and observation in self.agents[agent_name].message_history[-1].last_turn:
+                    continue
                 self.agents[agent_name].message_history.append(
                     Observation(
                         agent_name=agent_name,
@@ -162,6 +168,9 @@ class ToMEngine:
             for agent_name, action in step["actions"].items():
                 if action == "none":
                     continue
+                if not action.startswith("agent_name"):
+                    action = f"{agent_name} {action}"
+                last_action = action
                 self.agents[agent_name].message_history.append(
                     Observation(
                         agent_name=agent_name,

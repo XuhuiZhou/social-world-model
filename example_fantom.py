@@ -159,7 +159,7 @@ async def run(
 
 
 async def run_single_experiment_fantom(
-    row: pd.Series[Any], model_name: str = "gpt-4-mini", save_result: bool = False
+    row: pd.Series, model_name: str = "gpt-4-mini", save_result: bool = False  # type: ignore
 ) -> Dict[str, Any]:
     """Run a single FANToM experiment using LLM generation.
 
