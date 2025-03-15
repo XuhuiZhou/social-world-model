@@ -473,12 +473,9 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
         )
     elif question_type.endswith(":list"):
         engine.set_agent_prompt(
-            "You will be asked a question about who knows certain information in a conversation. "
-            "The previous history of the interaction below is your memory. "
-            "Assume that people can only perceive conversations when they are present. "
-            "If someone leaves a conversation, they cannot perceive what happens until they return. "
-            "First reason about the question and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>[list of names]</answer>"
+            "You will be asked whether you know certain information or correct answer to a question. "
+            "First reason and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>yes or no</answer>"
         )
     elif question_type.endswith(":binary"):
         engine.set_agent_prompt(
@@ -502,29 +499,25 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
     
     # Extract target agent if present in the question
     target_agent = None
-    if question_type.startswith("tom:belief:"):
-        # Extract target agent from questions like "Where does Owen think that..."
-        if "where does" in question.lower() and "think" in question.lower():
-            target_agent = question.lower().split("where does")[1].split("think")[0].strip().capitalize()
-    elif question_type.endswith(":binary"):
+    if question_type.endswith(":binary"):
         # Extract target agent from questions like "Does Owen know..."
-        if question.startswith("Does "):
-            target_agent = question.removeprefix("Does ").split(" know")[0].strip()
+        _, question_content = question.split("\n")[:2]
+        if question_content.startswith("Question: Does"):
+            target_agent = question_content.removeprefix("Question: Does ").split(" know")[0].strip()
+    elif question_type.endswith(":multiple-choice"):
+        target_agent = question.replace("Question: What does ", "").split(" ")[0].strip()
     
     # Get agent names from the socialized context
     agent_names = socialized_context_dict['agents_names']
-    
-    # Handle multiple-choice questions
-    answer_candidates = None
-    if question_type.endswith(":multiple-choice") and 'answer_choices' in row:
-        answer_candidates = row['choices_text']
-    
     # Get reasoning and answer from the engine
     if question_type.endswith(":list"):
         # For list questions, we need to ask each agent individually and gather their responses
         assert "List all the characters who know" in question, "List question must contain 'List all the characters who know'"
         information_asked_about = question.split("\n")[0].strip()
-        question_for_each_agent = f"Do you know the answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well)"
+        if question.startswith("Information:"):
+            question_for_each_agent = f"Do you know the following information (don't have to know it exactly): '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the information before the dialogue happens as well.)"
+        else:
+            question_for_each_agent = f"Do you know the answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well.)"
         
         # Ask each agent individually using reason_about_belief
         # Initialize lists to store results
@@ -583,18 +576,19 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
         engine.simulation.question = question
     else:
         # Use the existing method for other question types
-        reasoning, answer = await engine.reason_about_belief(
-            question, 
-            agent_names, 
-            target_agent=target_agent,
-            answer_candidates=answer_candidates
-        )
-    
+        if target_agent in agent_names:
+            reasoning, answer = await engine.reason_about_belief(
+                question, 
+                agent_names, 
+                target_agent=target_agent,
+            )
+        else:
+            reasoning, answer = "the agent is not in the world model", "no"
     # Get the simulation state
     simulation = engine.get_simulation()
     simulation_dict = simulation.dict()
-    
     # Prepare the result
+    breakpoint()
     result = {
         "question": question,
         "question_type": question_type,

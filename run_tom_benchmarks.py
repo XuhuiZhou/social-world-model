@@ -81,7 +81,9 @@ class ToMBenchmarkRunner:
         if continue_mode == "continue" and result_path.exists():
             print(f"Loading cached result for index {row['index']}")
             with open(result_path) as f:
-                return dict(json.load(f))
+                result = dict(json.load(f))
+                if 'multiple-choice' not in result['question_type']:
+                    return result
 
         # If no cached result or in new mode, run the experiment
         if mode == "vanilla":
@@ -183,9 +185,11 @@ Question: {question}
 
         # Parse response and create result
         if benchmark_type == "tomi":
-            result = self._parse_tomi_response(response, row)
+            parsed_result = self._parse_response(response, row)
+            result = self._create_tomi_result(parsed_result, row)
         elif benchmark_type == "fantom":
-            result = self._create_fantom_result(response, row)
+            parsed_result = self._parse_response(response, row)
+            result = self._create_fantom_result(parsed_result, row)
 
         return result
 
@@ -252,14 +256,15 @@ Question: {question}
             ), f"Socialized context for index {row['index']} not found"
             result = await tomi_simulation(row, engine)
         elif benchmark_type == "fantom":
-            result = await fantom_simulation(row, engine)
+            parsed_result = await fantom_simulation(row, engine)
+            result = self._create_fantom_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
             result = await self._run_vanilla(row, benchmark_type)
         return result
 
-    def _parse_tomi_response(
+    def _parse_response(
         self, response: str, row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
@@ -271,45 +276,39 @@ Question: {question}
             answer = response
 
         return {
-            "story": row["story"],
-            "question": row["question"],
-            "reasoning": reasoning,
-            "answer": answer,
-            "correct_answer": row["answer"],
-            "is_correct": row["answer"].lower() in answer.lower(),
-            "socialized_context": row["socialized_context"]
-            if "socialized_context" in row
-            else "",
+           "reasoning": reasoning,
+           "answer": answer,
         }
+
+    def _create_tomi_result(
+            self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
+    ) -> dict[str, Any]:
+        """Create ToMi result dictionary."""
+        targeted_entries = ["story", "question", "reasoning", "answer", "correct_answer", "is_correct", "socialized_context"]
+        result = {}
+        for entry in targeted_entries:
+            if entry in parsed_result:
+                result[entry] = parsed_result[entry]
+            elif entry in row:
+                result[entry] = row[entry]
+            else:
+                continue
+        return result
 
     def _create_fantom_result(
-        self, response: str, row: pd.Series  # type: ignore
+        self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Create FANToM result dictionary."""
-        try:
-            reasoning = response.split("<think>")[1].split("</think>")[0].strip()
-            answer = response.split("</think>")[1].strip()
-        except IndexError:
-            reasoning = "No reasoning provided"
-            answer = response
-
-        return {
-            "wrong_answer": row["wrong_answer"],
-            "missed_info_accessibility": row["missed_info_accessibility"],
-            "set_id": row["set_id"],
-            "part_id": row["part_id"],
-            "question_type": row["question_type"],
-            "tom_type": row["tom_type"],
-            "context": row["context"],
-            "gt_perception": row["gt_perception"],
-            "question": row["complete_question"],
-            "reasoning": reasoning,
-            "answer": answer,
-            "correct_answer": row["correct_answer"],
-            "socialized_context": row["socialized_context"]
-            if "socialized_context" in row
-            else "",
-        }
+        targeted_entries = ["wrong_answer", "missed_info_accessibility", "set_id", "part_id", "question_type", "tom_type", "context", "gt_perception", "question", "reasoning", "answer", "correct_answer", "socialized_context", "wrong_answer", "transformed_question", "memory", "agents", "choices_text", "input_text"]
+        result = {}
+        for entry in targeted_entries:
+            if entry in parsed_result:
+                result[entry] = parsed_result[entry]
+            elif entry in row:
+                result[entry] = row[entry]
+            else:
+                continue
+        return result
 
     def _save_result(self, result: dict[str, Any], result_path: Path) -> None:
         """Save experiment result to file."""
@@ -430,7 +429,6 @@ async def _run_benchmark(
     #     data = filtered_data
 
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
-
     all_results = []
     correct_count = 0
 
@@ -486,7 +484,7 @@ async def _run_benchmark(
             )
             return evaluated_results
 
-        evaluated_results = asyncio.run(evaluate_fantom())
+        evaluated_results = await evaluate_fantom()
         results_df = pd.DataFrame(evaluated_results)
         report = runner.fantom_eval_agent.score_and_analyze(results_df)
         print("\nEvaluation Report:")
@@ -498,7 +496,7 @@ async def _run_benchmark(
 
 
 @app.command()
-def evaluate_results(
+async def evaluate_results(
     benchmark_type: str = typer.Argument(
         ...,
         help="Type of benchmark to evaluate (tomi/fantom)",
@@ -584,7 +582,7 @@ def evaluate_results(
             )
             return evaluated_results
 
-        evaluated_results = asyncio.run(evaluate_fantom())
+        evaluated_results = await evaluate_fantom()
         results_df = pd.DataFrame(evaluated_results)
         report = runner.fantom_eval_agent.score_and_analyze(results_df)
         print("\nEvaluation Report:")
