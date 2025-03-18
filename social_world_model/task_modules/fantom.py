@@ -6,13 +6,58 @@ from tqdm import tqdm
 import random
 from sotopia.generation_utils import StrOutputParser, agenerate
 from typing import Any, Optional
-from social_world_model.tom_engine import ToMEngine
-from .utils import dictlize
+from social_world_model.social_world_model import SocialWorldModel
 import asyncio
 
 def str_to_list(s: str) -> list[str]:
     l = s.split(",")
     return [c.strip(" []'") for c in l]
+
+def flatten_fantom_data(entry: dict[str, Any]) -> list[dict[str, Any]]:
+    data_list: list[dict[str, Any]] = []
+    fact_qa_question = entry['factQA']['question']
+    fact_qa_answer = entry['factQA']['correct_answer']
+    fact_qa_wrong_answer = entry['factQA']['wrong_answer']
+    for key in entry.keys():
+        if "QAs" in key:
+            for question in entry[key]:
+                row = {
+                    'question': question['question'],
+                    'question_type': question['question_type'],
+                    'tom_type': question.get('tom_type', ''),
+                    'correct_answer': question['correct_answer'],
+                    'wrong_answer': question.get('wrong_answer', ""),
+                    'missed_info_accessibility': question['missed_info_accessibility'],
+                    'context': entry['short_context'],
+                    'full_context': entry['full_context'],
+                    'set_id': entry['set_id'],
+                    'part_id': entry['part_id'],
+                    'complete_question': question['complete_question'],
+                    'fact_question': fact_qa_question,
+                    'fact_answer': fact_qa_answer,
+                }
+                data_list.append(row)
+        elif "QA" in key and "fact" not in key:
+            question = entry[key]
+            row = {
+                'question': question['question'],
+                'question_type': question['question_type'],
+                'tom_type': question.get('tom_type', ''),
+                'correct_answer': question['correct_answer'],
+                'wrong_answer': question.get('wrong_answer', ""),   
+                'missed_info_accessibility': question['missed_info_accessibility'],
+                'context': entry['short_context'],
+                'full_context': entry['full_context'],
+                'set_id': entry['set_id'],
+                'part_id': entry['part_id'],
+                'complete_question': question['complete_question'],
+                'fact_question': fact_qa_question,
+                'fact_answer': fact_qa_answer,
+            }
+            data_list.append(row)
+        else:            
+            continue
+    return data_list
 
 class FantomEvalAgent():
     def __init__(self, model_name: str):
@@ -366,82 +411,82 @@ Output only the numerical score between 0 and 1."""
                         int(belief_counts[idx[0]].sum())
                     ]
 
-        # Character tracking analysis
-        binary_qas = df[df['question_type'].str.endswith(":binary")].copy()
-        binary_qas['target_character'] = binary_qas['question'].map(lambda x: x.removeprefix("Does ").split(" know")[0].lower())
+        # # Character tracking analysis
+        # binary_qas = df[df['question_type'].str.endswith(":binary")].copy()
+        # binary_qas['target_character'] = binary_qas['question'].map(lambda x: x.removeprefix("Does ").split(" know")[0].lower())
         
-        belief_qas = target_df[target_df['question_type'].str.startswith("tom:belief")].copy()
-        belief_qas['target_character'] = belief_qas['question'].map(lambda x: x.lower().split("does ")[1].split()[0].lower())
+        # belief_qas = target_df[target_df['question_type'].str.startswith("tom:belief")].copy()
+        # belief_qas['target_character'] = belief_qas['question'].map(lambda x: x.lower().split("does ")[1].split()[0].lower())
         
-        answerability_list_qas = target_df[target_df['question_type'].str.endswith("answerability:list")].set_index("set_id", drop=False)
-        accessibility_list_qas = target_df[target_df['question_type'].str.endswith("info_accessibility:list")].set_index("set_id", drop=False)
+        # answerability_list_qas = target_df[target_df['question_type'].str.endswith("answerability:list")].set_index("set_id", drop=False)
+        # accessibility_list_qas = target_df[target_df['question_type'].str.endswith("info_accessibility:list")].set_index("set_id", drop=False)
 
-        # Analyze list question responses at character level
-        binary_answerability = binary_qas[binary_qas['question_type'].str.startswith('tom:answerability:')]
-        tiled_answerability = binary_answerability[["set_id", 'target_character', 'correct_answer']].join(
-            answerability_list_qas[['prediction', "set_id"]], 
-            on="set_id", 
-            how='outer', 
-            lsuffix='-binary'
-        )
+        # # Analyze list question responses at character level
+        # binary_answerability = binary_qas[binary_qas['question_type'].str.startswith('tom:answerability:')]
+        # tiled_answerability = binary_answerability[["set_id", 'target_character', 'correct_answer']].join(
+        #     answerability_list_qas[['prediction', "set_id"]], 
+        #     on="set_id", 
+        #     how='outer', 
+        #     lsuffix='-binary'
+        # )
         
-        tiled_answerability['binarized_model_answer'] = tiled_answerability.apply(
-            lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
-            axis=1
-        )
-        tiled_answerability['binarized_correct_answer'] = tiled_answerability['correct_answer'].map(
-            lambda x: True if x =='yes' else False
-        )
-        tiled_answerability['result'] = tiled_answerability.apply(
-            lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
-            axis=1
-        )
+        # tiled_answerability['binarized_model_answer'] = tiled_answerability.apply(
+        #     lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
+        #     axis=1
+        # )
+        # tiled_answerability['binarized_correct_answer'] = tiled_answerability['correct_answer'].map(
+        #     lambda x: True if x =='yes' else False
+        # )
+        # tiled_answerability['result'] = tiled_answerability.apply(
+        #     lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
+        #     axis=1
+        # )
 
-        binary_accessibility = binary_qas[binary_qas['question_type'].str.startswith('tom:info_accessibility:')]
-        tiled_accessibility = binary_accessibility[["set_id", 'target_character', 'correct_answer']].join(
-            accessibility_list_qas[['prediction', "set_id"]], 
-            on="set_id", 
-            how='outer', 
-            lsuffix='-binary'
-        )
+        # binary_accessibility = binary_qas[binary_qas['question_type'].str.startswith('tom:info_accessibility:')]
+        # tiled_accessibility = binary_accessibility[["set_id", 'target_character', 'correct_answer']].join(
+        #     accessibility_list_qas[['prediction', "set_id"]], 
+        #     on="set_id", 
+        #     how='outer', 
+        #     lsuffix='-binary'
+        # )
         
-        tiled_accessibility['binarized_model_answer'] = tiled_accessibility.apply(
-            lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
-            axis=1
-        )
-        tiled_accessibility['binarized_correct_answer'] = tiled_accessibility['correct_answer'].map(
-            lambda x: True if x =='yes' else False
-        )
-        tiled_accessibility['result'] = tiled_accessibility.apply(
-            lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
-            axis=1
-        )
+        # tiled_accessibility['binarized_model_answer'] = tiled_accessibility.apply(
+        #     lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
+        #     axis=1
+        # )
+        # tiled_accessibility['binarized_correct_answer'] = tiled_accessibility['correct_answer'].map(
+        #     lambda x: True if x =='yes' else False
+        # )
+        # tiled_accessibility['result'] = tiled_accessibility.apply(
+        #     lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
+        #     axis=1
+        # )
 
-        # Calculate character-level metrics
-        df_for_all_character = pd.concat([
-            belief_qas[['target_character', "set_id", 'result']],
-            tiled_answerability[['target_character', "set_id", 'result']],
-            tiled_accessibility[['target_character', "set_id", 'result']]
-        ])
+        # # Calculate character-level metrics
+        # df_for_all_character = pd.concat([
+        #     belief_qas[['target_character', "set_id", 'result']],
+        #     tiled_answerability[['target_character', "set_id", 'result']],
+        #     tiled_accessibility[['target_character', "set_id", 'result']]
+        # ])
         
-        df1 = df_for_all_character.groupby(["set_id", 'target_character'])['result'].all()
-        report[target_scenario+':set:ALL_character'] = [df1.mean(), len(df1)]
+        # df1 = df_for_all_character.groupby(["set_id", 'target_character'])['result'].all()
+        # report[target_scenario+':set:ALL_character'] = [df1.mean(), len(df1)]
 
-        # Character consistency analysis
-        df_for_character_consistency = pd.concat([
-            tiled_answerability[['target_character', "set_id", 'binarized_model_answer']],
-            tiled_accessibility[['target_character', "set_id", 'binarized_model_answer']]
-        ])
+        # # Character consistency analysis
+        # df_for_character_consistency = pd.concat([
+        #     tiled_answerability[['target_character', "set_id", 'binarized_model_answer']],
+        #     tiled_accessibility[['target_character', "set_id", 'binarized_model_answer']]
+        # ])
         
-        df1 = df_for_character_consistency.reset_index(drop=True).groupby(
-            ["set_id", 'target_character']
-        )['binarized_model_answer'].nunique().eq(1)
+        # df1 = df_for_character_consistency.reset_index(drop=True).groupby(
+        #     ["set_id", 'target_character']
+        # )['binarized_model_answer'].nunique().eq(1)
         
-        report[target_scenario+':set:character_answer_consistency'] = [df1.mean(), len(df1)]
+        # report[target_scenario+':set:character_answer_consistency'] = [df1.mean(), len(df1)]
 
         return report
 
-async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) -> dict[str, Any]:  # type: ignore
+async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] = None) -> dict[str, Any]:  # type: ignore
     """Run experiment in simulation mode for FANToM benchmark (using ToM engine for memory tracking).
     
     Args:
@@ -454,7 +499,6 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
     assert engine is not None, "Engine must be provided"
     # Get the socialized context from the engine
     socialized_context = engine.existing_socialized_contexts[str(row['set_id'])]
-    socialized_context_dict = dictlize(socialized_context)
     
     # Extract character information from the question
     question = row['complete_question']
@@ -495,7 +539,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
         )
     
     # Initialize the simulation with the socialized context
-    await engine.initialize_simulation_from_socialized_context(socialized_context_dict)
+    await engine.initialize_simulation_from_socialized_context(socialized_context)
     
     # Extract target agent if present in the question
     target_agent = None
@@ -508,7 +552,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
         target_agent = question.replace("Question: What does ", "").split(" ")[0].strip()
     
     # Get agent names from the socialized context
-    agent_names = socialized_context_dict['agents_names']
+    agent_names = socialized_context['agents_names']
     # Get reasoning and answer from the engine
     if question_type.endswith(":list"):
         # For list questions, we need to ask each agent individually and gather their responses
@@ -588,7 +632,6 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
     simulation = engine.get_simulation()
     simulation_dict = simulation.dict()
     # Prepare the result
-    breakpoint()
     result = {
         "question": question,
         "question_type": question_type,

@@ -1,10 +1,8 @@
 from pydantic import Field, BaseModel
 from sotopia.messages import ActionType
 
-
-class SocializedStructure(BaseModel):
+class SocializedStructureForModel(BaseModel):
     timestep: str = Field(
-        default="",
         description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state.",
     )
     state: str = Field(
@@ -17,6 +15,14 @@ class SocializedStructure(BaseModel):
         description="The actions for each agent in the social world at this timestep. The length of the list should be the same as the number of agents. Put 'none' if the agent does not take any action at this timestep. The format for each entry in the list is: 'agent_name: action'"
     )
 
+
+
+class SocializedStructure(BaseModel):
+    timestep: str
+    state: str
+    observations: dict[str, str]
+    actions: dict[str, str]
+
     def to_natural_language(self, timestep: int) -> str:
         return (
             "At timestep "
@@ -24,18 +30,24 @@ class SocializedStructure(BaseModel):
             + ":\nState: "
             + self.state
             + "\nObservations: "
-            + "\n".join(self.observations)
+            + "\n".join(self.observations.values())
             + "\nActions: "
-            + "\n".join(self.actions)
+            + "\n".join(self.actions.values())
         )
+
+class SocializedContextForModel(BaseModel):
+    agents_names: list[str] = Field(description="The names of the agents")
+    socialized_context: list[SocializedStructureForModel] = Field(
+        description="A list of SocializedStructureForModel objects, each representing a timestep of the social world. At the last timestep, all agents' actions should be 'none' as they have already completed the interaction."
+    )
 
 
 class SocializedContext(BaseModel):
-    agents_names: list[str] = Field(description="The names of the agents")
-    socialized_context: list[SocializedStructure] = Field(
-        description="A list of SocializedStructure objects, each representing a timestep of the social world. At the last timestep, all agents' actions should be 'none' as they have already completed the interaction."
+    agents_names: list[str]
+    socialized_context: list[SocializedStructure]
+    context_manual: str = Field(
+        description="The manual of how to interpret the socialized context, it should come from the prompt of generating the socialized context."
     )
-
     def to_natural_language(self) -> str:
         return (
             "Agents involved in the conversation: "
@@ -47,6 +59,7 @@ class SocializedContext(BaseModel):
                     for index, structure in enumerate(self.socialized_context)
                 ]
             )
+            + "\n" + self.context_manual
         )
 
 

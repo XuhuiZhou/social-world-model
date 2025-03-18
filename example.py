@@ -1,9 +1,9 @@
 from rich import print
-from social_world_model.tom_engine import ToMEngine
+from social_world_model.social_world_model import SocialWorldModel
 
 
 async def run_sally_anne_test() -> None:
-    engine = ToMEngine()
+    engine = SocialWorldModel()
     # Run the full scenario
     scenario = (
         "Sally puts a marble in her basket, leaves the room, "

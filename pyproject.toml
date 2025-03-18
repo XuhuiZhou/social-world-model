@@ -12,6 +12,7 @@ readme = "README.md"
 dependencies = [
     "sotopia==0.1.2",
     "pandas>=2.1.0",
+    "jsonlines>=4.0.0",
 ]
 
 [build-system]

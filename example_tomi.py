@@ -1,6 +1,6 @@
 from rich import print
 from rich.logging import RichHandler
-from social_world_model.tom_engine import ToMEngine
+from social_world_model.social_world_model import SocialWorldModel
 from pathlib import Path
 import pandas as pd
 import logging
@@ -8,7 +8,7 @@ import json
 from typing import Any, Optional
 import os
 from sotopia.generation_utils import StrOutputParser, agenerate
-from social_world_model.tom_engine import SocializedContext  # type: ignore
+from social_world_model.social_world_model import SocializedContext  # type: ignore
 import asyncio
 
 # Set up logging
@@ -127,7 +127,7 @@ async def run_single_experiment(
             row["char1"] = ""
             row["char2"] = ""
     observation_with_perceivers = []
-    engine = ToMEngine(
+    engine = SocialWorldModel(
         agent_prompt="You will be asking some questions about your beliefs. The previous history of the interaction below is your memory (i.e., you perceive the entire history of the interaction). Assume that you can perceive every scene in your location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore.\
 You need to first reason about the question (majorly focusing where the object has been moved to, and answer the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A') and then respond to the question with the following format:<reasoning>(reasoning)</reasoning> <answer>(answer; the answer should be just the position and nothing else)</answer>",
         model_name=model_name,
@@ -145,7 +145,7 @@ You need to first reason about the question (majorly focusing where the object h
                 else:
                     imagined_socialized_events.append(event)
             socialized_context["socialized_context"] = imagined_socialized_events
-        await engine.initialize_simulation_from_socialized_context(socialized_context)
+        await engine.initialize_simulation_from_socialized_context(SocializedContext(**socialized_context))
     else:
         for story_with_perceivers in eval(row["story_with_perceivers"]):
             for observation, perceivers in story_with_perceivers.items():
@@ -261,7 +261,7 @@ async def run_tomi_experiments(
             example_patterns = open(
                 "data/social_contexts_example/tomi_patterns.txt"
             ).read()
-            tom_engine = ToMEngine(model_name=model_name)
+            tom_engine = SocialWorldModel(model_name=model_name)
             # Process in batches for critique operations
             critique_batch_size = batch_size
             num_critique_batches = (
