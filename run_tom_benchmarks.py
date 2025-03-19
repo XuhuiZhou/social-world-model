@@ -353,7 +353,7 @@ def run_benchmark(
     model_name: str = "o1-2024-12-17",
     mode: str = typer.Option(
         "vanilla",
-        help="Mode to run in (vanilla/socialized_context)",
+        help="Mode to run in (vanilla/socialized_context/pure_context/simulation/generate_socialized_context; you need to run generate_socialized_context first to use simulation mode)",
         callback=validate_mode,
     ),
     continue_mode: str = typer.Option(

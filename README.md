@@ -15,17 +15,38 @@ uv sync --all-extras
 ## Run ToM Benchmarks
 
 ```bash
-python run_tom_benchmarks.py run-benchmark "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=8 --save --model-name="together_ai/deepseek-ai/DeepSeek-R1" --mode="vanilla"
+uv run python run_tom_benchmarks.py --help
+```
+to get to know the options.
+
+```bash
+uv run python run_tom_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=8 --save --model-name="together_ai/deepseek-ai/DeepSeek-R1" --mode="vanilla"
 ```
 
 or
 
 ```bash
-python run_tom_benchmarks.py run-benchmark "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation"
+uv run python run_tom_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation"
 ```
 
-## To Simply Evaluate
+## To Simply Evaluate after running the benchmarks
 
 ```bash
-python run_tom_benchmarks.py evaluate-results tomi o1-2024-12-17 --mode="vanilla"
+uv run python run_tom_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"
 ```
+
+
+## Contributing
+
+To contribute, please use the following pattern for a new feature:
+`feature_name/xx`
+
+for a bug fix:
+`bugfix/xx`
+
+Run:
+```bash
+uv run mypy --strict .
+```
+to check the type safety of the code before pushing.
+
