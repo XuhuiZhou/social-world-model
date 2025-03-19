@@ -1,3 +1,3 @@
-from .database import Observation, AgentAction, SocializedContext
+from .database import Observation, AgentAction, SocializedContext, SocializedStructure, SocializedStructureForModel, SocializedContextForModel, SocializedContext
 
-__all__ = ["Observation", "AgentAction", "SocializedContext"]
+__all__ = ["Observation", "AgentAction", "SocializedContext", "SocializedStructure", "SocializedStructureForModel", "SocializedContextForModel", "SocializedContext"]

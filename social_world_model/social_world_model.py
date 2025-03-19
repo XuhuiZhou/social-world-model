@@ -1,10 +1,11 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
 from social_world_model.agents import LLMAgent
-from social_world_model.database import Observation, SocializedContext
+from social_world_model.database import Observation, SocializedContext, SocializedContextForModel, SocializedStructure
 from sotopia.generation_utils import agenerate
 from typing import Any
+from social_world_model.engine import dictlize
 import json
 
 
@@ -35,14 +36,14 @@ class Simulation(BaseModel):
     answer: str = Field(description="The answer that the agent gave to the question")
 
 
-class ToMEngine:
+class SocialWorldModel:
     def __init__(
         self,
         agent_prompt: str = "",
         task_specific_instructions: str = "",
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
-        existing_socialized_contexts: dict[str, Any] = {},
+        existing_socialized_contexts: dict[str, SocializedContext] = {},
     ):
         """Initialize ToM engine.
 
@@ -132,30 +133,94 @@ class ToMEngine:
                     )
                 )
 
-    async def initialize_simulation_from_socialized_context(
-        self, socialized_context: dict[str, Any]
-    ) -> None:
-        socialized_events = socialized_context["socialized_context"]
-        agent_names = socialized_context["agents_names"]
+    async def decode_socialized_context(
+        self, socialized_context: SocializedContext
+    ) -> SocializedContext:
+        """
+        Decode special symbols in the socialized context.
+        
+        Args:
+            socialized_context: The socialized context with potential special symbols
+            
+        Returns:
+            Decoded socialized context with special symbols replaced with actual text
+        """
         last_action = ""
+        last_action_agent = ""
+        # Create a new SocializedContext object with the same attributes
+        decoded_context = SocializedContext(
+            agents_names=socialized_context.agents_names.copy(),
+            socialized_context=[],
+            context_manual=socialized_context.context_manual
+        )
+        
+        # Process each socialized structure
+        for step in socialized_context.socialized_context:
+            # Create a new structure for the current step
+            decoded_step = SocializedStructure(
+                timestep=step.timestep,
+                state=step.state if step.state != '[SAME AS LAST ACTION]' else last_action,
+                observations={},
+                actions={}
+            )
+            
+            # Process observations
+            for agent_name, observation in step.observations.items():
+                if observation == "[SAME AS STATE]":
+                    decoded_step.observations[agent_name] = decoded_step.state
+                elif observation!=last_action and agent_name==last_action_agent:
+                    if observation=="none":
+                        decoded_step.observations[agent_name] = last_action
+                    else:
+                        decoded_step.observations[agent_name] = last_action + observation
+                else:
+                    decoded_step.observations[agent_name] = observation
+            
+            # Process actions
+            for agent_name, action in step.actions.items():
+                if action != "none" and not action.startswith("agent_name"):
+                    action = f"{agent_name} {action}"
+                    # Update last_action for future reference
+                    # TODO: This is a strong assumption that only one action is taken per timestep
+                    last_action = action
+                    last_action_agent = agent_name
+                
+                decoded_step.actions[agent_name] = action
+            
+            # Add the decoded step to the new context
+            decoded_context.socialized_context.append(decoded_step)
+        
+        return decoded_context
+
+    async def initialize_simulation_from_socialized_context(
+        self, socialized_context: SocializedContext
+    ) -> None:
+        """
+        Initialize simulation from a socialized context.
+        
+        Args:
+            socialized_context: The socialized context to initialize from
+        """
+        decoded_socialized_context = await self.decode_socialized_context(socialized_context)
+        # Use the SocializedContext object directly
+        socialized_events = decoded_socialized_context.socialized_context
+        agent_names = decoded_socialized_context.agents_names
+        
+        # Add agents
         for agent_name in agent_names:
             self.add_agent(agent_name)
+            
+        # Process events
         for step in socialized_events:
-            if step['state'] == '[SAME AS LAST ACTION]':
-                step['state'] = last_action
-            for agent_name, observation in step["observations"].items():
+            # Add observations to agent message history
+            for agent_name, observation in step.observations.items():
                 if observation == "none":
-                    continue
-                if observation == "[SAME AS STATE]":
-                    observation = step["state"]
-                # avoid adding the same action twice
-                if self.agents[agent_name].message_history and observation in self.agents[agent_name].message_history[-1].last_turn:
                     continue
                 self.agents[agent_name].message_history.append(
                     Observation(
                         agent_name=agent_name,
                         last_turn=observation,
-                        turn_number=self.current_time,
+                        turn_number=step.timestep,
                         available_actions=[
                             "none",
                             "speak",
@@ -165,27 +230,7 @@ class ToMEngine:
                         ],
                     )
                 )
-            for agent_name, action in step["actions"].items():
-                if action == "none":
-                    continue
-                if not action.startswith("agent_name"):
-                    action = f"{agent_name} {action}"
-                last_action = action
-                self.agents[agent_name].message_history.append(
-                    Observation(
-                        agent_name=agent_name,
-                        last_turn=action,
-                        turn_number=self.current_time,
-                        available_actions=[
-                            "none",
-                            "speak",
-                            "non-verbal communication",
-                            "action",
-                            "leave",
-                        ],
-                    )
-                )
-
+            
     async def reason_about_belief(
         self,
         question: str,
@@ -283,16 +328,16 @@ class ToMEngine:
             template=template,
             input_values=input_values,
             temperature=self.temperature,
-            output_parser=PydanticOutputParser(pydantic_object=SocializedContext),
+    output_parser=PydanticOutputParser(pydantic_object=SocializedContextForModel),
             structured_output=True,
         )
-        # save the socialized context to a file
-        with open("socialized_context.json", "w") as f:
-            json.dump(socialized_context.model_dump(), f, indent=2)
         assert isinstance(
-            socialized_context, SocializedContext
+            socialized_context, SocializedContextForModel
         ), "Socialized context is not a SocializedContext"
-        return socialized_context
+        socialized_context_dict = dictlize(socialized_context)
+        context_manual = f"Here's how to interpret the socialized context: \n{json.dumps(SocializedContextForModel.model_json_schema(), indent=2)}\nTask specific instructions:{self.task_specific_instructions}"  
+        socialized_context_processed = SocializedContext(**socialized_context_dict, context_manual=context_manual)
+        return socialized_context_processed
 
     async def critique_and_improve_context(
         self,

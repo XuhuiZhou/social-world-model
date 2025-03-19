@@ -1,5 +1,5 @@
 from typing import Any
-from social_world_model.database import SocializedContext
+from social_world_model.database import SocializedContextForModel, SocializedContext
 import json
 from pathlib import Path
 
@@ -16,7 +16,7 @@ def load_existing_socialized_contexts(data_path: Path, identifier_key: str) -> d
                 existing_socialized_contexts[file.stem] = socialized_context
     return existing_socialized_contexts
 
-def dictlize(d: SocializedContext) -> dict[str, Any]:
+def dictlize(d: SocializedContextForModel) -> dict[str, Any]:
     """Convert a list of observations/actions into a dictionary format.
     
     Args:

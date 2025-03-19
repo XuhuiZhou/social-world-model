@@ -6,13 +6,58 @@ from tqdm import tqdm
 import random
 from sotopia.generation_utils import StrOutputParser, agenerate
 from typing import Any, Optional
-from social_world_model.tom_engine import ToMEngine
-from .utils import dictlize
+from social_world_model.social_world_model import SocialWorldModel
 import asyncio
 
 def str_to_list(s: str) -> list[str]:
     l = s.split(",")
     return [c.strip(" []'") for c in l]
+
+def flatten_fantom_data(entry: dict[str, Any]) -> list[dict[str, Any]]:
+    data_list: list[dict[str, Any]] = []
+    fact_qa_question = entry['factQA']['question']
+    fact_qa_answer = entry['factQA']['correct_answer']
+    fact_qa_wrong_answer = entry['factQA']['wrong_answer']
+    for key in entry.keys():
+        if "QAs" in key:
+            for question in entry[key]:
+                row = {
+                    'question': question['question'],
+                    'question_type': question['question_type'],
+                    'tom_type': question.get('tom_type', ''),
+                    'correct_answer': question['correct_answer'],
+                    'wrong_answer': question.get('wrong_answer', ""),
+                    'missed_info_accessibility': question['missed_info_accessibility'],
+                    'context': entry['short_context'],
+                    'full_context': entry['full_context'],
+                    'set_id': entry['set_id'],
+                    'part_id': entry['part_id'],
+                    'complete_question': question['complete_question'],
+                    'fact_question': fact_qa_question,
+                    'fact_answer': fact_qa_answer,
+                }
+                data_list.append(row)
+        elif "QA" in key and "fact" not in key:
+            question = entry[key]
+            row = {
+                'question': question['question'],
+                'question_type': question['question_type'],
+                'tom_type': question.get('tom_type', ''),
+                'correct_answer': question['correct_answer'],
+                'wrong_answer': question.get('wrong_answer', ""),   
+                'missed_info_accessibility': question['missed_info_accessibility'],
+                'context': entry['short_context'],
+                'full_context': entry['full_context'],
+                'set_id': entry['set_id'],
+                'part_id': entry['part_id'],
+                'complete_question': question['complete_question'],
+                'fact_question': fact_qa_question,
+                'fact_answer': fact_qa_answer,
+            }
+            data_list.append(row)
+        else:            
+            continue
+    return data_list
 
 class FantomEvalAgent():
     def __init__(self, model_name: str):
@@ -217,6 +262,7 @@ Output only the numerical score between 0 and 1."""
                 raise NotImplementedError
             qa['result'] = result
             qa['prediction'] = pred
+        breakpoint()
         return qas
 
     def score_and_analyze(self, df: pd.DataFrame, target_scenario: str = 'inaccessible') -> dict[str, Any]:
@@ -319,7 +365,6 @@ Output only the numerical score between 0 and 1."""
                 axis=1
             )
             report[target_scenario+':tom:lists:wrong_reasons:freq'] = list_wrong['reason'].value_counts(normalize=False).to_dict() # type: ignore
-
         # Error Analysis for Binary Questions
         if 'binarized_model_answer' in target_df.columns:
             binary_wrong = target_df[
@@ -366,82 +411,82 @@ Output only the numerical score between 0 and 1."""
                         int(belief_counts[idx[0]].sum())
                     ]
 
-        # Character tracking analysis
-        binary_qas = df[df['question_type'].str.endswith(":binary")].copy()
-        binary_qas['target_character'] = binary_qas['question'].map(lambda x: x.removeprefix("Does ").split(" know")[0].lower())
+        # # Character tracking analysis
+        # binary_qas = df[df['question_type'].str.endswith(":binary")].copy()
+        # binary_qas['target_character'] = binary_qas['question'].map(lambda x: x.removeprefix("Does ").split(" know")[0].lower())
         
-        belief_qas = target_df[target_df['question_type'].str.startswith("tom:belief")].copy()
-        belief_qas['target_character'] = belief_qas['question'].map(lambda x: x.lower().split("does ")[1].split()[0].lower())
+        # belief_qas = target_df[target_df['question_type'].str.startswith("tom:belief")].copy()
+        # belief_qas['target_character'] = belief_qas['question'].map(lambda x: x.lower().split("does ")[1].split()[0].lower())
         
-        answerability_list_qas = target_df[target_df['question_type'].str.endswith("answerability:list")].set_index("set_id", drop=False)
-        accessibility_list_qas = target_df[target_df['question_type'].str.endswith("info_accessibility:list")].set_index("set_id", drop=False)
+        # answerability_list_qas = target_df[target_df['question_type'].str.endswith("answerability:list")].set_index("set_id", drop=False)
+        # accessibility_list_qas = target_df[target_df['question_type'].str.endswith("info_accessibility:list")].set_index("set_id", drop=False)
 
-        # Analyze list question responses at character level
-        binary_answerability = binary_qas[binary_qas['question_type'].str.startswith('tom:answerability:')]
-        tiled_answerability = binary_answerability[["set_id", 'target_character', 'correct_answer']].join(
-            answerability_list_qas[['prediction', "set_id"]], 
-            on="set_id", 
-            how='outer', 
-            lsuffix='-binary'
-        )
+        # # Analyze list question responses at character level
+        # binary_answerability = binary_qas[binary_qas['question_type'].str.startswith('tom:answerability:')]
+        # tiled_answerability = binary_answerability[["set_id", 'target_character', 'correct_answer']].join(
+        #     answerability_list_qas[['prediction', "set_id"]], 
+        #     on="set_id", 
+        #     how='outer', 
+        #     lsuffix='-binary'
+        # )
         
-        tiled_answerability['binarized_model_answer'] = tiled_answerability.apply(
-            lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
-            axis=1
-        )
-        tiled_answerability['binarized_correct_answer'] = tiled_answerability['correct_answer'].map(
-            lambda x: True if x =='yes' else False
-        )
-        tiled_answerability['result'] = tiled_answerability.apply(
-            lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
-            axis=1
-        )
+        # tiled_answerability['binarized_model_answer'] = tiled_answerability.apply(
+        #     lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
+        #     axis=1
+        # )
+        # tiled_answerability['binarized_correct_answer'] = tiled_answerability['correct_answer'].map(
+        #     lambda x: True if x =='yes' else False
+        # )
+        # tiled_answerability['result'] = tiled_answerability.apply(
+        #     lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
+        #     axis=1
+        # )
 
-        binary_accessibility = binary_qas[binary_qas['question_type'].str.startswith('tom:info_accessibility:')]
-        tiled_accessibility = binary_accessibility[["set_id", 'target_character', 'correct_answer']].join(
-            accessibility_list_qas[['prediction', "set_id"]], 
-            on="set_id", 
-            how='outer', 
-            lsuffix='-binary'
-        )
+        # binary_accessibility = binary_qas[binary_qas['question_type'].str.startswith('tom:info_accessibility:')]
+        # tiled_accessibility = binary_accessibility[["set_id", 'target_character', 'correct_answer']].join(
+        #     accessibility_list_qas[['prediction', "set_id"]], 
+        #     on="set_id", 
+        #     how='outer', 
+        #     lsuffix='-binary'
+        # )
         
-        tiled_accessibility['binarized_model_answer'] = tiled_accessibility.apply(
-            lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
-            axis=1
-        )
-        tiled_accessibility['binarized_correct_answer'] = tiled_accessibility['correct_answer'].map(
-            lambda x: True if x =='yes' else False
-        )
-        tiled_accessibility['result'] = tiled_accessibility.apply(
-            lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
-            axis=1
-        )
+        # tiled_accessibility['binarized_model_answer'] = tiled_accessibility.apply(
+        #     lambda x: str(x['target_character']).lower() in str(x['prediction']).lower(), 
+        #     axis=1
+        # )
+        # tiled_accessibility['binarized_correct_answer'] = tiled_accessibility['correct_answer'].map(
+        #     lambda x: True if x =='yes' else False
+        # )
+        # tiled_accessibility['result'] = tiled_accessibility.apply(
+        #     lambda x: x['binarized_model_answer'] == x['binarized_correct_answer'], 
+        #     axis=1
+        # )
 
-        # Calculate character-level metrics
-        df_for_all_character = pd.concat([
-            belief_qas[['target_character', "set_id", 'result']],
-            tiled_answerability[['target_character', "set_id", 'result']],
-            tiled_accessibility[['target_character', "set_id", 'result']]
-        ])
+        # # Calculate character-level metrics
+        # df_for_all_character = pd.concat([
+        #     belief_qas[['target_character', "set_id", 'result']],
+        #     tiled_answerability[['target_character', "set_id", 'result']],
+        #     tiled_accessibility[['target_character', "set_id", 'result']]
+        # ])
         
-        df1 = df_for_all_character.groupby(["set_id", 'target_character'])['result'].all()
-        report[target_scenario+':set:ALL_character'] = [df1.mean(), len(df1)]
+        # df1 = df_for_all_character.groupby(["set_id", 'target_character'])['result'].all()
+        # report[target_scenario+':set:ALL_character'] = [df1.mean(), len(df1)]
 
-        # Character consistency analysis
-        df_for_character_consistency = pd.concat([
-            tiled_answerability[['target_character', "set_id", 'binarized_model_answer']],
-            tiled_accessibility[['target_character', "set_id", 'binarized_model_answer']]
-        ])
+        # # Character consistency analysis
+        # df_for_character_consistency = pd.concat([
+        #     tiled_answerability[['target_character', "set_id", 'binarized_model_answer']],
+        #     tiled_accessibility[['target_character', "set_id", 'binarized_model_answer']]
+        # ])
         
-        df1 = df_for_character_consistency.reset_index(drop=True).groupby(
-            ["set_id", 'target_character']
-        )['binarized_model_answer'].nunique().eq(1)
+        # df1 = df_for_character_consistency.reset_index(drop=True).groupby(
+        #     ["set_id", 'target_character']
+        # )['binarized_model_answer'].nunique().eq(1)
         
-        report[target_scenario+':set:character_answer_consistency'] = [df1.mean(), len(df1)]
+        # report[target_scenario+':set:character_answer_consistency'] = [df1.mean(), len(df1)]
 
         return report
 
-async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) -> dict[str, Any]:  # type: ignore
+async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] = None) -> dict[str, Any]:  # type: ignore
     """Run experiment in simulation mode for FANToM benchmark (using ToM engine for memory tracking).
     
     Args:
@@ -454,7 +499,6 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
     assert engine is not None, "Engine must be provided"
     # Get the socialized context from the engine
     socialized_context = engine.existing_socialized_contexts[str(row['set_id'])]
-    socialized_context_dict = dictlize(socialized_context)
     
     # Extract character information from the question
     question = row['complete_question']
@@ -464,72 +508,52 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
     if question_type.startswith("tom:belief:"):
         engine.set_agent_prompt(
             "You will be asked a question about your beliefs based on a conversation you participated in. "
-            "The previous history of the interaction below is your memory. "
-            "Assume that you can only perceive conversations when you are present. "
-            "If you leave a conversation, you cannot perceive what happens until you return. "
-            "If the candidate answer is provided, the final answer should only be (a), (b), (c), or (d) etc."
+            "Be faithful to your memory of the conversation and do not hallucinate."
+            "If some details are not provided in your memory, you are unlikely to know it unless if could be inferred from your knowledge of the conversation."
             "First reason about the question and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(a or b)</answer>"
         )
-    elif question_type.endswith(":list"):
+    elif question_type.endswith(":list") or question_type.endswith(":binary"):
         engine.set_agent_prompt(
-            "You will be asked a question about who knows certain information in a conversation. "
-            "The previous history of the interaction below is your memory. "
-            "Assume that people can only perceive conversations when they are present. "
-            "If someone leaves a conversation, they cannot perceive what happens until they return. "
-            "First reason about the question and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>[list of names]</answer>"
-        )
-    elif question_type.endswith(":binary"):
-        engine.set_agent_prompt(
-            "You will be asked a yes/no question about whether someone knows certain information. "
-            "The previous history of the interaction below is your memory. "
-            "Assume that people can only perceive conversations when they are present. "
-            "If someone leaves a conversation, they cannot perceive what happens until they return. "
-            "First reason about the question and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(yes or no)</answer>"
+            "First reason and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>yes or no</answer>"
         )
     else:
         engine.set_agent_prompt(
-            "You will be asked a question about a conversation you participated in. "
-            "The previous history of the interaction below is your memory. "
             "First reason about the question and then respond with the following format: "
             "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
         )
     
     # Initialize the simulation with the socialized context
-    await engine.initialize_simulation_from_socialized_context(socialized_context_dict)
+    await engine.initialize_simulation_from_socialized_context(socialized_context)
     
     # Extract target agent if present in the question
     target_agent = None
-    if question_type.startswith("tom:belief:"):
-        # Extract target agent from questions like "Where does Owen think that..."
-        if "where does" in question.lower() and "think" in question.lower():
-            target_agent = question.lower().split("where does")[1].split("think")[0].strip().capitalize()
-    elif question_type.endswith(":binary"):
+    if question_type.endswith(":binary"):
         # Extract target agent from questions like "Does Owen know..."
-        if question.startswith("Does "):
-            target_agent = question.removeprefix("Does ").split(" know")[0].strip()
+        _, question_content = question.split("\n")[:2]
+        if question_content.startswith("Question: Does"):
+            target_agent = question_content.removeprefix("Question: Does ").split(" know")[0].strip()
+    elif question_type.endswith(":multiple-choice"):
+        target_agent = question.replace("Question: What does ", "").split(" ")[0].strip()
     
     # Get agent names from the socialized context
-    agent_names = socialized_context_dict['agents_names']
-    
-    # Handle multiple-choice questions
-    answer_candidates = None
-    if question_type.endswith(":multiple-choice") and 'answer_choices' in row:
-        answer_candidates = row['choices_text']
-    
+    agent_names = socialized_context.agents_names
     # Get reasoning and answer from the engine
     if question_type.endswith(":list"):
         # For list questions, we need to ask each agent individually and gather their responses
         assert "List all the characters who know" in question, "List question must contain 'List all the characters who know'"
         information_asked_about = question.split("\n")[0].strip()
-        question_for_each_agent = f"Do you know the answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well)"
+        if question.startswith("Information:"):
+            question_for_each_agent = f"Do you know the following information: '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the information before the dialogue happens as well.)"
+        else:
+            question_for_each_agent = f"Do you know the precise correct answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well.)"
         
         # Ask each agent individually using reason_about_belief
         # Initialize lists to store results
         all_reasoning = []
         knowledgeable_agents = []
+        all_questions = []
         
         # Create tasks for all agents
         tasks = []
@@ -542,7 +566,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
                     answer_candidates=None
                 )
             )
-        
+            all_questions.append(question_for_each_agent)
         # Gather results from all agents concurrently
         agent_results = await asyncio.gather(*tasks)
         
@@ -580,20 +604,20 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
         # Update simulation state
         engine.simulation.reasoning = reasoning
         engine.simulation.answer = answer
-        engine.simulation.question = question
+        engine.simulation.question = "\n".join(all_questions)
     else:
         # Use the existing method for other question types
-        reasoning, answer = await engine.reason_about_belief(
-            question, 
-            agent_names, 
-            target_agent=target_agent,
-            answer_candidates=answer_candidates
-        )
-    
+        if target_agent in agent_names:
+            reasoning, answer = await engine.reason_about_belief(
+                question, 
+                agent_names, 
+                target_agent=target_agent,
+            )
+        else:
+            reasoning, answer = "the agent is not in the world model", "no"
     # Get the simulation state
     simulation = engine.get_simulation()
     simulation_dict = simulation.dict()
-    
     # Prepare the result
     result = {
         "question": question,
@@ -604,7 +628,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[ToMEngine] = None) 
         "socialized_context": socialized_context,
         "transformed_question": simulation_dict["question"],
         "memory": simulation_dict["agent_memories"],
+        "target_agent": target_agent,
         "agents": simulation_dict["agents"]
     }
-    
     return result
