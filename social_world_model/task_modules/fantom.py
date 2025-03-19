@@ -515,8 +515,11 @@ async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] =
         )
     elif question_type.endswith(":list") or question_type.endswith(":binary"):
         engine.set_agent_prompt(
-            "First reason and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>yes or no</answer>"
+            "You will be asked a question about your beliefs based on a conversation you participated in. "
+            "Be faithful to your memory of the conversation and do not hallucinate."
+            "If some details are not provided in your memory, you are unlikely to know it unless if could be inferred from your knowledge of the conversation."
+            "First reason about the question and then respond with the following format: "
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(a or b)</answer>"
         )
     else:
         engine.set_agent_prompt(
