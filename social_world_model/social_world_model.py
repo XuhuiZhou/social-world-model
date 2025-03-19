@@ -43,7 +43,7 @@ class SocialWorldModel:
         task_specific_instructions: str = "",
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
-        existing_socialized_contexts: dict[str, Any] = {},
+        existing_socialized_contexts: dict[str, SocializedContext] = {},
     ):
         """Initialize ToM engine.
 
@@ -201,9 +201,10 @@ class SocialWorldModel:
         Args:
             socialized_context: The socialized context to initialize from
         """
+        decoded_socialized_context = await self.decode_socialized_context(socialized_context)
         # Use the SocializedContext object directly
-        socialized_events = socialized_context.socialized_context
-        agent_names = socialized_context.agents_names
+        socialized_events = decoded_socialized_context.socialized_context
+        agent_names = decoded_socialized_context.agents_names
         
         # Add agents
         for agent_name in agent_names:

@@ -30,17 +30,17 @@ async def tomi_simulation(row: pd.Series, engine: Optional[SocialWorldModel] = N
     engine.set_agent_prompt(
         "You will be asking some questions about your beliefs. The previous history of the interaction below is your memory (i.e., you perceive the entire history of the interaction). Assume that you can perceive every scene in your location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore.\
 You need to first reason about the question (majorly focusing where the object has been moved to, and answer the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A') and then respond to the question with the following format:<reasoning>(reasoning)</reasoning> <answer>(answer; the answer should be just the position and nothing else)</answer>")
-    agent_names = socialized_context['agents_names']
-    socialized_events = socialized_context['socialized_context']
+    agent_names = socialized_context.agents_names
+    socialized_events = socialized_context.socialized_context
     if row['char2'] and str(row['char2'])!="nan":
         imagined_socialized_events = []
         for index, event in enumerate(socialized_events):
-            if event['observations'][row['char1']] == "none":
+            if event.observations[row['char1']] == "none":
                 if index > 0:
-                    socialized_events[index-1]['actions'][row['char2']] = "none"
+                    socialized_events[index-1].actions[row['char2']] = "none"
             else:
                 imagined_socialized_events.append(event)
-        socialized_context['socialized_context'] = imagined_socialized_events
+        socialized_context.socialized_context = imagined_socialized_events
     await engine.initialize_simulation_from_socialized_context(socialized_context)
 
     if row['char2'] and str(row['char2'])!="nan":

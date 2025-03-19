@@ -1,3 +1,8 @@
+### Date: 2025-03-18
+```python
+uv run python run_tom_benchmarks.py "fantom"  --batch-size=6 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode=continue
+```
+
 ### Date: 2025-03-17
 ```python
 uv run python run_tom_benchmarks.py "fantom"  --batch-size=1 --save --model-name="o1-2024-12-17" --mode="generate_socialized_context" --continue-mode=continue --example-analysis-file="data/social_contexts_example/fantom.json"

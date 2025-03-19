@@ -1,12 +1,23 @@
 import json
 import os
 import csv
+import pandas as pd
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Any, DefaultDict
+from typing import Dict, List, Any, DefaultDict, Literal, Optional, get_args, cast
+import typer
+from rich import print
+from rich.console import Console
+from rich.table import Table
+
+# Create type aliases
+BenchmarkType = Literal["tomi", "fantom"]
+
+app = typer.Typer(pretty_exceptions_enable=False)
+console = Console()
 
 
-def get_question_type(question: str) -> str:
+def get_tomi_question_type(question: str) -> str:
     question = question.lower().strip()
     if question.startswith("where will"):
         return "first order"
@@ -36,7 +47,7 @@ def analyze_simulation_files(directory: str) -> None:
                 data: Dict[str, Any] = json.load(f)
 
             if "question" in data:
-                question_type = get_question_type(data["question"])
+                question_type = get_tomi_question_type(data["question"])
                 stats[question_type]["total"] += 1
 
                 # Check if correct_answer exists and is different from answer

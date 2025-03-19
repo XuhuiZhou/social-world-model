@@ -262,6 +262,7 @@ Output only the numerical score between 0 and 1."""
                 raise NotImplementedError
             qa['result'] = result
             qa['prediction'] = pred
+        breakpoint()
         return qas
 
     def score_and_analyze(self, df: pd.DataFrame, target_scenario: str = 'inaccessible') -> dict[str, Any]:
@@ -364,7 +365,6 @@ Output only the numerical score between 0 and 1."""
                 axis=1
             )
             report[target_scenario+':tom:lists:wrong_reasons:freq'] = list_wrong['reason'].value_counts(normalize=False).to_dict() # type: ignore
-
         # Error Analysis for Binary Questions
         if 'binarized_model_answer' in target_df.columns:
             binary_wrong = target_df[
@@ -508,32 +508,18 @@ async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] =
     if question_type.startswith("tom:belief:"):
         engine.set_agent_prompt(
             "You will be asked a question about your beliefs based on a conversation you participated in. "
-            "The previous history of the interaction below is your memory. "
-            "Assume that you can only perceive conversations when you are present. "
-            "If you leave a conversation, you cannot perceive what happens until you return. "
-            "If the candidate answer is provided, the final answer should only be (a), (b), (c), or (d) etc."
+            "Be faithful to your memory of the conversation and do not hallucinate."
+            "If some details are not provided in your memory, you are unlikely to know it unless if could be inferred from your knowledge of the conversation."
             "First reason about the question and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
+            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(a or b)</answer>"
         )
-    elif question_type.endswith(":list"):
+    elif question_type.endswith(":list") or question_type.endswith(":binary"):
         engine.set_agent_prompt(
-            "You will be asked whether you know certain information or correct answer to a question. "
             "First reason and then respond with the following format: "
             "<reasoning>(your step-by-step reasoning)</reasoning> <answer>yes or no</answer>"
         )
-    elif question_type.endswith(":binary"):
-        engine.set_agent_prompt(
-            "You will be asked a yes/no question about whether someone knows certain information. "
-            "The previous history of the interaction below is your memory. "
-            "Assume that people can only perceive conversations when they are present. "
-            "If someone leaves a conversation, they cannot perceive what happens until they return. "
-            "First reason about the question and then respond with the following format: "
-            "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(yes or no)</answer>"
-        )
     else:
         engine.set_agent_prompt(
-            "You will be asked a question about a conversation you participated in. "
-            "The previous history of the interaction below is your memory. "
             "First reason about the question and then respond with the following format: "
             "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
         )
@@ -552,21 +538,22 @@ async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] =
         target_agent = question.replace("Question: What does ", "").split(" ")[0].strip()
     
     # Get agent names from the socialized context
-    agent_names = socialized_context['agents_names']
+    agent_names = socialized_context.agents_names
     # Get reasoning and answer from the engine
     if question_type.endswith(":list"):
         # For list questions, we need to ask each agent individually and gather their responses
         assert "List all the characters who know" in question, "List question must contain 'List all the characters who know'"
         information_asked_about = question.split("\n")[0].strip()
         if question.startswith("Information:"):
-            question_for_each_agent = f"Do you know the following information (don't have to know it exactly): '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the information before the dialogue happens as well.)"
+            question_for_each_agent = f"Do you know the following information: '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the information before the dialogue happens as well.)"
         else:
-            question_for_each_agent = f"Do you know the answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well.)"
+            question_for_each_agent = f"Do you know the precise correct answer to '{information_asked_about}'? (only answer with yes or no; you should answer yes if you know the answer before the dialogue happens as well.)"
         
         # Ask each agent individually using reason_about_belief
         # Initialize lists to store results
         all_reasoning = []
         knowledgeable_agents = []
+        all_questions = []
         
         # Create tasks for all agents
         tasks = []
@@ -579,7 +566,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] =
                     answer_candidates=None
                 )
             )
-        
+            all_questions.append(question_for_each_agent)
         # Gather results from all agents concurrently
         agent_results = await asyncio.gather(*tasks)
         
@@ -617,7 +604,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] =
         # Update simulation state
         engine.simulation.reasoning = reasoning
         engine.simulation.answer = answer
-        engine.simulation.question = question
+        engine.simulation.question = "\n".join(all_questions)
     else:
         # Use the existing method for other question types
         if target_agent in agent_names:
@@ -641,7 +628,7 @@ async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] =
         "socialized_context": socialized_context,
         "transformed_question": simulation_dict["question"],
         "memory": simulation_dict["agent_memories"],
+        "target_agent": target_agent,
         "agents": simulation_dict["agents"]
     }
-    
     return result

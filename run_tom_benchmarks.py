@@ -296,7 +296,7 @@ Question: {question}
         self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Create FANToM result dictionary."""
-        targeted_entries = ["wrong_answer", "missed_info_accessibility", "set_id", "part_id", "question_type", "tom_type", "context", "question", "complete_question", "reasoning", "answer", "correct_answer", "socialized_context", "wrong_answer", "transformed_question", "memory", "agents"]
+        targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents"]
         result = {}
         for entry in targeted_entries:
             if entry in parsed_result:
