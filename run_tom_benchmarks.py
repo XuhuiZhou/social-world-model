@@ -115,56 +115,63 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
-        if "socialized_context" in row:
-            if isinstance(row["socialized_context"], SocializedContext):
-                socialized_context = row["socialized_context"].to_natural_language()
-            else:
-                socialized_context = SocializedContext(**row["socialized_context"]).to_natural_language()
+        if "extra_info" in row:
+            extra_info = row["extra_info"]
         else:
-            socialized_context = ""
+            extra_info = ""
         if benchmark_type == "tomi":
             try:
                 story = " ".join(eval(row["story"]))
             except Exception as e:
                 print(f"Error parsing story for index {row['index']}: {e}")
                 story = row["story"]
-            if socialized_context:
+            if extra_info:
                 if pure_context:
-                    story = socialized_context
-                else:
-                    story = story + "\n" + socialized_context
-
+                    story = extra_info
+                    extra_info = ""
             question = row["question"]
             template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A'. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and only include the most detailed location but not other information.
 
 Below is the story and question:
-Story: {story}
-Question: {question}"""
+## Story
+{story}
 
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+
+## Question
+{question}"""
             if row["cands"]:
                 template += "\n\nPossible answers: {candidates}"
 
             input_values = {
                 "story": story,
                 "question": question,
+                "extra_info": extra_info,
                 "candidates": ", ".join(eval(row["cands"])) if row["cands"] else "",
             }
         elif benchmark_type == "fantom":  # fantom
-            if socialized_context:
+            if extra_info:
                 if pure_context:
-                    context = socialized_context
-                else:
-                    context = row["context"] + "\n" + socialized_context
-            else:
-                context = row["context"]
+                    context = extra_info
+                    extra_info = ""
+            context = row["context"]
             template = """
 You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
+## Context
+{context}
 
-Context: {context}
-Question: {question}
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+
+## Question
+{question}
 """
             input_values = {
                 "context": context,
+                "extra_info": extra_info,
                 "question": row["complete_question"],
             }
         # Generate response
@@ -176,7 +183,6 @@ Question: {question}
             output_parser=StrOutputParser(),
             structured_output=False,
         )
-
         # Parse response and create result
         if benchmark_type == "tomi":
             parsed_result = self._parse_response(response, row)
@@ -232,6 +238,7 @@ Question: {question}
                 )
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
+        row["extra_info"] = socialized_context.to_natural_language()
         result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
         return result
 
@@ -250,7 +257,11 @@ Question: {question}
             result = await tomi_simulation(row, engine)
         elif benchmark_type == "fantom":
             parsed_result = await fantom_simulation(row, engine)
-            result = self._create_fantom_result(parsed_result, row)
+            row["extra_info"] = parsed_result["extra_info"]
+            row["memory"] = parsed_result["memory"]
+            row["agents"] = parsed_result["agents"]
+            row["socialized_context"] = parsed_result["socialized_context"]
+            result = await self._run_vanilla(row, benchmark_type)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -281,7 +292,7 @@ Question: {question}
             self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Create ToMi result dictionary."""
-        targeted_entries = ["story", "question", "reasoning", "answer", "correct_answer", "is_correct", "socialized_context"]
+        targeted_entries = ["story", "question", "reasoning", "answer", "correct_answer", "is_correct", "socialized_context", "extra_info"]
         result = {}
         for entry in targeted_entries:
             if entry in parsed_result:
@@ -296,7 +307,7 @@ Question: {question}
         self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
     ) -> dict[str, Any]:
         """Create FANToM result dictionary."""
-        targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents"]
+        targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents", "extra_info"]
         result = {}
         for entry in targeted_entries:
             if entry in parsed_result:
