@@ -46,7 +46,7 @@ class LLMAgent:
         history = self._format_message_history(self.message_history)
         action: str = await agenerate(
             model_name=self.model_name,
-            template="Imagine that you are {agent_name} in the scenario. {agent_prompt}\nBelow is the previous history of the interaction.\n"
+            template="Imagine that you are {agent_name} in the scenario. {agent_prompt}\n[**Your own memory (i.e., {agent_name}'s own memory) of the interaction**]:\n"
             "{message_history}\n",
             input_values={
                 "message_history": history,

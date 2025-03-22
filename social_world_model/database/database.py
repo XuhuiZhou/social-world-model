@@ -50,7 +50,8 @@ class SocializedContext(BaseModel):
     )
     def to_natural_language(self) -> str:
         return (
-            "Agents involved in the conversation: "
+            "### Socialized Context\n"
+            + "Agents involved in the conversation: "
             + ", ".join(self.agents_names)
             + ".\nSocialized context:\n"
             + "\n".join(
@@ -59,9 +60,9 @@ class SocializedContext(BaseModel):
                     for index, structure in enumerate(self.socialized_context)
                 ]
             )
-            + "\n" + self.context_manual
+            + "\n#### How to interpret the socialized context and how it's created\n"
+            + self.context_manual
         )
-
 
 class Observation(BaseModel):
     agent_name: str = Field(description="the name of the agent")

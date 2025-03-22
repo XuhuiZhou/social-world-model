@@ -131,19 +131,16 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
-        if "socialized_context" in row:
-            if isinstance(row["socialized_context"], SocializedContext):
-                socialized_context = row["socialized_context"].to_natural_language()
-            else:
-                socialized_context = SocializedContext(**row["socialized_context"]).to_natural_language()
+        if "extra_info" in row:
+            extra_info = row["extra_info"]
         else:
-            socialized_context = ""
+            extra_info = ""
         if benchmark_type == "tomi":
-            template, input_values = prepare_tomi_vanilla(row, socialized_context, pure_context)
+            template, input_values = prepare_tomi_vanilla(row, pure_context)
         elif benchmark_type == "fantom":  # fantom
-            template, input_values = prepare_fantom_vanilla(row, socialized_context, pure_context)
+            template, input_values = prepare_fantom_vanilla(row, pure_context)
         elif benchmark_type == "confaide":  # confaide
-            template, input_values = prepare_confaide_vanilla(row, socialized_context, pure_context)
+            template, input_values = prepare_confaide_vanilla(row, pure_context)
         # Generate response
         response = await agenerate(
             model_name=self.model_name,
@@ -153,7 +150,6 @@ class ToMBenchmarkRunner:
             output_parser=StrOutputParser(),
             structured_output=False,
         )
-
         # Parse response and create result
         if benchmark_type == "tomi":
             parsed_result = self._parse_response(response, row)
@@ -208,6 +204,7 @@ class ToMBenchmarkRunner:
                 )
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
+        row["extra_info"] = socialized_context.to_natural_language()
         result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
         breakpoint()
         return result
