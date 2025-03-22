@@ -14,8 +14,20 @@ from social_world_model.database import SocializedContext
 from social_world_model.task_modules import (
     tomi_simulation,
     fantom_simulation,
-    FantomEvalAgent,
     flatten_fantom_data,
+    confaide_simulation,
+    prepare_tomi_vanilla,
+    prepare_fantom_vanilla,
+    prepare_confaide_vanilla,
+    create_tomi_result,
+    create_fantom_result,
+    create_confaide_result,
+    tomi_evaluation_report,
+    fantom_evaluation_report,
+    confaide_evaluation_report,
+    TOMI_SOCIALIZED_CONTEXT_PROMPT,
+    FANTOM_SOCIALIZED_CONTEXT_PROMPT,
+    CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -34,7 +46,12 @@ app = typer.Typer(pretty_exceptions_enable=False)
 # Create type aliases using the constants
 ModeType = Literal["vanilla", "socialized_context", "pure_context", "simulation", "generate_socialized_context"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom"]
+BenchmarkType = Literal["tomi", "fantom", "confaide"]
+SocializedContextPrompt = {
+    "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
+    "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
+    "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
+}
 
 
 class ToMBenchmarkRunner:
@@ -45,7 +62,6 @@ class ToMBenchmarkRunner:
         existing_socialized_contexts_path: Optional[dict[str, Any]] = None,
     ):
         self.model_name = model_name
-        self.fantom_eval_agent = FantomEvalAgent(model_name)
         self.dataset_name = dataset_name
         self.existing_socialized_contexts = {}
         if existing_socialized_contexts_path and os.path.exists(
@@ -58,7 +74,7 @@ class ToMBenchmarkRunner:
 
     async def run_single_experiment(
         self,
-        row: pd.Series,  # type: ignore
+        row: dict[str, Any],
         benchmark_type: BenchmarkType,
         save_result: bool = False,
         mode: ModeType = "vanilla",
@@ -111,7 +127,7 @@ class ToMBenchmarkRunner:
         return result
 
     async def _run_vanilla(
-        self, row: pd.Series, benchmark_type: str, pure_context: bool = False  # type: ignore
+        self, row: dict[str, Any], benchmark_type: str, pure_context: bool = False
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
@@ -123,50 +139,11 @@ class ToMBenchmarkRunner:
         else:
             socialized_context = ""
         if benchmark_type == "tomi":
-            try:
-                story = " ".join(eval(row["story"]))
-            except Exception as e:
-                print(f"Error parsing story for index {row['index']}: {e}")
-                story = row["story"]
-            if socialized_context:
-                if pure_context:
-                    story = socialized_context
-                else:
-                    story = story + "\n" + socialized_context
-
-            question = row["question"]
-            template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A'. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and only include the most detailed location but not other information.
-
-Below is the story and question:
-Story: {story}
-Question: {question}"""
-
-            if row["cands"]:
-                template += "\n\nPossible answers: {candidates}"
-
-            input_values = {
-                "story": story,
-                "question": question,
-                "candidates": ", ".join(eval(row["cands"])) if row["cands"] else "",
-            }
+            template, input_values = prepare_tomi_vanilla(row, socialized_context, pure_context)
         elif benchmark_type == "fantom":  # fantom
-            if socialized_context:
-                if pure_context:
-                    context = socialized_context
-                else:
-                    context = row["context"] + "\n" + socialized_context
-            else:
-                context = row["context"]
-            template = """
-You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
-
-Context: {context}
-Question: {question}
-"""
-            input_values = {
-                "context": context,
-                "question": row["complete_question"],
-            }
+            template, input_values = prepare_fantom_vanilla(row, socialized_context, pure_context)
+        elif benchmark_type == "confaide":  # confaide
+            template, input_values = prepare_confaide_vanilla(row, socialized_context, pure_context)
         # Generate response
         response = await agenerate(
             model_name=self.model_name,
@@ -180,15 +157,18 @@ Question: {question}
         # Parse response and create result
         if benchmark_type == "tomi":
             parsed_result = self._parse_response(response, row)
-            result = self._create_tomi_result(parsed_result, row)
+            result = create_tomi_result(parsed_result, row)
         elif benchmark_type == "fantom":
             parsed_result = self._parse_response(response, row)
-            result = self._create_fantom_result(parsed_result, row)
+            result = create_fantom_result(parsed_result, row)
+        elif benchmark_type == "confaide":
+            parsed_result = self._parse_response(response, row)
+            result = create_confaide_result(parsed_result, row)
         return result
 
     async def _run_socialized_context(
         self,
-        row: pd.Series,  # type: ignore
+        row: dict[str, Any],
         benchmark_type: str,
         example_analysis_file: str = "",
         pure_context: bool = False,
@@ -199,23 +179,19 @@ Question: {question}
 
         if benchmark_type == "tomi":
             context = " ".join(eval(row["story"]))
-            engine.set_task_specific_instructions(
-                "You are dissecting the TOMI scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."
-            )
-        elif benchmark_type == "fantom":
-            # Process FANToM-specific observation structure
+  
+        else:
             context = row["context"]
-            engine.set_task_specific_instructions(
-                "You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use [SAME AS LAST ACTION] in the state field to indicate that the state is the same as the last action."
-            )
-
+        engine.set_task_specific_instructions(
+            SocializedContextPrompt[benchmark_type]
+        )
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
         else:
             example_analysis = ""
         if (
-            benchmark_type == "fantom"
-        ):  # FANToM has a lot of repeated set_ids, so we cache the socialized contexts
+            benchmark_type == "fantom" or benchmark_type == "confaide"
+        ):  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
@@ -237,7 +213,7 @@ Question: {question}
 
     async def _run_simulation(
         self,
-        row: pd.Series,  # type: ignore
+        row: dict[str, Any],
         benchmark_type: str,
         engine: Optional[SocialWorldModel] = None,
     ) -> dict[str, Any]:
@@ -250,7 +226,10 @@ Question: {question}
             result = await tomi_simulation(row, engine)
         elif benchmark_type == "fantom":
             parsed_result = await fantom_simulation(row, engine)
-            result = self._create_fantom_result(parsed_result, row)
+            result = create_fantom_result(parsed_result, row)
+        elif benchmark_type == "confaide":
+            parsed_result = await confaide_simulation(row, engine)
+            result = create_confaide_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -258,7 +237,7 @@ Question: {question}
         return result
 
     def _parse_response(
-        self, response: str, row: pd.Series  # type: ignore
+        self, response: str, row: dict[str, Any]
     ) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
@@ -276,36 +255,6 @@ Question: {question}
            "reasoning": reasoning,
            "answer": answer,
         }
-
-    def _create_tomi_result(
-            self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
-    ) -> dict[str, Any]:
-        """Create ToMi result dictionary."""
-        targeted_entries = ["story", "question", "reasoning", "answer", "correct_answer", "is_correct", "socialized_context"]
-        result = {}
-        for entry in targeted_entries:
-            if entry in parsed_result:
-                result[entry] = parsed_result[entry]
-            elif entry in row:
-                result[entry] = row[entry]
-            else:
-                continue
-        return result
-
-    def _create_fantom_result(
-        self, parsed_result: dict[str, Any], row: pd.Series  # type: ignore
-    ) -> dict[str, Any]:
-        """Create FANToM result dictionary."""
-        targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents"]
-        result = {}
-        for entry in targeted_entries:
-            if entry in parsed_result:
-                result[entry] = parsed_result[entry]
-            elif entry in row:
-                result[entry] = row[entry]
-            else:
-                continue
-        return result
 
     def _save_result(self, result: dict[str, Any], result_path: Path) -> None:
         """Save experiment result to file."""
@@ -344,7 +293,7 @@ def validate_continue_mode(value: str) -> str:
 def run_benchmark(
     benchmark_type: str = typer.Argument(
         ...,
-        help="Type of benchmark to run (tomi/fantom)",
+        help="Type of benchmark to run (tomi/fantom/confaide)",
         callback=validate_benchmark_type,
     ),
     dataset_path: Optional[str] = None,
@@ -370,26 +319,31 @@ def run_benchmark(
         dataset_path = {
             "tomi": "./data/rephrased_tomi_test_600.csv",
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
+            "confaide": "./data/confaide_data/confaide.jsonl",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
     except Exception as e:
-        # Load jsonl file for fantom dataset
-        if dataset_path.endswith('.jsonl') and benchmark_type == "fantom":
+        # Load jsonl file for fantom and confaide datasets
+        if dataset_path.endswith('.jsonl'):
             data_list = []
             with open(dataset_path, 'r') as f:
                 for line in f:
                     entry = json.loads(line)
-                    data_list += flatten_fantom_data(entry)
+                    if benchmark_type == "fantom":
+                        data_list += flatten_fantom_data(entry)
+                    else:
+                        # For confaide, we assume the data is already flattened
+                        data_list.append(entry)
             data = pd.DataFrame(data_list)
             data['index'] = range(len(data))
         else:
             raise ValueError(f"Data set in a different format: {e}")
     if mode == "generate_socialized_context":
-        # For fantom only, select a subset of unique set_ids
-        if benchmark_type == "fantom":
+        # For fantom and confaide, select a subset of unique set_ids
+        if benchmark_type in ["fantom", "confaide"]:
             data = data.groupby("set_id").head(1).reset_index(drop=True)
             mode = "socialized_context"
 
@@ -406,7 +360,6 @@ def run_benchmark(
             example_analysis_file=example_analysis_file,
         )
     )
-
 
 async def _run_benchmark(
     benchmark_type: str,
@@ -427,21 +380,20 @@ async def _run_benchmark(
             "data_path": Path(
                 f"data/{benchmark_type}_results/socialized_context_o1-2024-12-17_{dataset_name}"
             ),
-            "identifier_key": "set_id" if benchmark_type == "fantom" else None,
+            "identifier_key": "set_id" if benchmark_type in ["fantom", "confaide"] else None,
         },
     )
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
     all_results = []
-    correct_count = 0
     for i in range(0, len(data), batch_size):
-        batch = data.iloc[i : i + batch_size]
+        batch = data.iloc[i : i + batch_size].to_dict('records')
         print(
             f"\nProcessing batch {i//batch_size + 1}/{(len(data) + batch_size - 1)//batch_size}"
         )
 
         tasks = [
             runner.run_single_experiment(
-                row,
+                cast(dict[str, Any], row),
                 benchmark_type=cast(
                     BenchmarkType,
                     benchmark_type
@@ -458,42 +410,18 @@ async def _run_benchmark(
                 ),
                 example_analysis_file=example_analysis_file,
             )
-            for _, row in batch.iterrows()
+            for row in batch
         ]
         results = await asyncio.gather(*tasks)
         all_results.extend(results)
 
-        # Print results
-        for result in results:
-            if benchmark_type == "tomi":
-                if result["is_correct"]:
-                    correct_count += 1
-                print(f"\nQuestion: {result['question']}")
-                print(f"Reasoning: {result['reasoning']}")
-                print(f"Answer: {result['answer']}")
-                print(f"Correct answer: {result['correct_answer']}")
-                print(
-                    f"Current accuracy: {correct_count}/{i + len(results)} = {correct_count/(i + len(results)):.2%}"
-                )
-
-    # Final evaluation
-    if benchmark_type == "fantom":
-
-        async def evaluate_fantom() -> list[dict[str, Any]]:
-            evaluated_results = await runner.fantom_eval_agent.evaluate_response(
-                all_results, [result["answer"] for result in all_results]
-            )
-            return evaluated_results
-
-        evaluated_results = await evaluate_fantom()
-        results_df = pd.DataFrame(evaluated_results)
-        report = runner.fantom_eval_agent.score_and_analyze(results_df)
-        print("\nEvaluation Report:")
-        print(report)
-    else:
-        print(
-            f"\nFinal accuracy: {correct_count}/{len(data)} = {correct_count/len(data):.2%}"
-        )
+    # Final evaluation report
+    if benchmark_type == "tomi":
+        tomi_evaluation_report(all_results)
+    elif benchmark_type == "fantom":
+        fantom_evaluation_report(all_results)
+    elif benchmark_type == "confaide":
+        confaide_evaluation_report(all_results)
 
 if __name__ == "__main__":
     app()
