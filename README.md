@@ -15,24 +15,24 @@ uv sync --all-extras
 ## Run ToM Benchmarks
 
 ```bash
-uv run python run_tom_benchmarks.py --help
+uv run python run_benchmarks.py --help
 ```
 to get to know the options.
 
 ```bash
-uv run python run_tom_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=8 --save --model-name="together_ai/deepseek-ai/DeepSeek-R1" --mode="vanilla"
+uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=8 --save --model-name="together_ai/deepseek-ai/DeepSeek-R1" --mode="vanilla"
 ```
 
 or
 
 ```bash
-uv run python run_tom_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation"
+uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation"
 ```
 
 ## To Simply Evaluate after running the benchmarks
 
 ```bash
-uv run python run_tom_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"
+uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"
 ```
 
 

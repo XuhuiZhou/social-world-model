@@ -10,6 +10,44 @@ from social_world_model.social_world_model import SocialWorldModel
 import asyncio
 import re
 
+FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use [SAME AS LAST ACTION] in the state field to indicate that the state is the same as the last action."""
+
+def prepare_fantom_vanilla(row: dict[str, Any], socialized_context:str="", pure_context: bool = False) -> tuple[str, dict[str, Any]]:
+    if socialized_context:
+        if pure_context:
+            context = socialized_context
+        else:
+            context = row["context"] + "\n" + socialized_context
+    else:
+        context = row["context"]
+    template = """
+You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
+
+Context: {context}
+Question: {question}
+"""
+    input_values = {
+        "context": context,
+        "question": row["complete_question"],
+    }
+
+    return template, input_values
+
+def create_fantom_result(
+    parsed_result: dict[str, Any], row: dict[str, Any]
+) -> dict[str, Any]:
+    """Create FANToM result dictionary."""
+    targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents"]
+    result = {}
+    for entry in targeted_entries:
+        if entry in parsed_result:
+            result[entry] = parsed_result[entry]
+        elif entry in row:
+            result[entry] = row[entry]
+        else:
+            continue
+    return result
+
 def str_to_list(s: str) -> list[str]:
     l = s.split(",")
     return [c.strip(" []'") for c in l]
@@ -60,6 +98,20 @@ def flatten_fantom_data(entry: dict[str, Any]) -> list[dict[str, Any]]:
             continue
     return data_list
 
+def fantom_evaluation_report(results: list[dict[str, Any]]) -> None:
+    runner = FantomEvalAgent(model_name="gpt-4-mini")
+    def evaluate_fantom() -> list[dict[str, Any]]:
+        evaluated_results = runner.evaluate_response(
+            results, [result["answer"] for result in results]
+        )
+        return evaluated_results
+
+    evaluated_results = evaluate_fantom()
+    results_df = pd.DataFrame(evaluated_results)
+    report = runner.score_and_analyze(results_df)
+    print("\nEvaluation Report:")
+    print(report)
+
 class FantomEvalAgent():
     def __init__(self, model_name: str):
         self.model_name = model_name
@@ -83,56 +135,6 @@ class FantomEvalAgent():
         recall = 1.0 * num_same / len(ground_truth_tokens)
         f1 = (2 * precision * recall) / (precision + recall)
         return f1
-
-    async def compute_semantic_similarity(self, text1: str, text2: str) -> float:
-        """
-        Compute semantic similarity between two texts using LLM via agenerate.
-        Args:
-            text1 (str): First text
-            text2 (str): Second text
-        Returns:
-            float: Similarity score between 0 and 1
-        """
-        template = """Rate the semantic similarity between these two texts on a scale of 0 to 1, where 1 means identical meaning and 0 means completely different:
-
-Text 1: {text1}
-Text 2: {text2}
-
-Output only the numerical score between 0 and 1."""
-
-        try:
-            response = await agenerate(
-                model_name=self.model_name,
-                template=template,
-                input_values={
-                    "text1": text1,
-                    "text2": text2
-                },
-                temperature=0.0,  # Use 0 temperature for consistent scoring
-                output_parser=StrOutputParser(),
-                structured_output=False
-            )
-            score = float(response.strip())
-            return min(max(score, 0), 1)  # Clamp between 0 and 1
-        except:
-            return 0.0
-
-    async def evaluate_belief_q(self, qa: dict[str, Any], model_response: str) -> tuple[bool, float]:
-        """
-        Evaluate the belief question using semantic similarity via LLM.
-        """
-        wrong_tom_view = qa['wrong_answer']
-        correct_answer = qa['correct_answer']
-        
-        similarity_wrong = await self.compute_semantic_similarity(model_response, wrong_tom_view)
-        similarity_correct = await self.compute_semantic_similarity(model_response, correct_answer)
-
-        if similarity_wrong >= similarity_correct:
-            wrong_view_lexical_overlap = self.compute_f1(wrong_tom_view, model_response)
-            return False, wrong_view_lexical_overlap
-        else:
-            correct_view_lexical_overlap = self.compute_f1(correct_answer, model_response)
-            return True, correct_view_lexical_overlap
 
     def evaluate_mc_belief_q(self, qa: dict[str, Any], model_response: str) -> bool:
         """
@@ -227,7 +229,7 @@ Output only the numerical score between 0 and 1."""
         mapping = {'yes': 1, 'no': 0, 'no:long': 0, 'error': -1}
         return mapping[yesno_str]
 
-    async def evaluate_response(self, qas: list[dict[str, Any]], predictions: list[str]) -> list[dict[str, Any]]:
+    def evaluate_response(self, qas: list[dict[str, Any]], predictions: list[str]) -> list[dict[str, Any]]:
         """
         Evaluates the model's response for a list of questions and predictions.
         Args:
@@ -243,8 +245,7 @@ Output only the numerical score between 0 and 1."""
                 if qa['question_type'].endswith(":multiple-choice"):
                     result = self.evaluate_mc_belief_q(qa, pred)
                 else:
-                    result, word_overlap = await self.evaluate_belief_q(qa, pred)
-                    qa['word_overlap'] = word_overlap
+                    raise NotImplementedError
             elif qa['question_type'].endswith(":list"):
                 result, excluded_aware_character, included_unaware_character, answer_span = self.evaluate_list_q_bracket(qa, pred)
                 qa['excluded_aware_character'] = excluded_aware_character
@@ -485,7 +486,7 @@ Output only the numerical score between 0 and 1."""
 
         return report
 
-async def fantom_simulation(row: pd.Series, engine: Optional[SocialWorldModel] = None) -> dict[str, Any]:  # type: ignore
+async def fantom_simulation(row: dict[str, Any], engine: Optional[SocialWorldModel] = None) -> dict[str, Any]:
     """Run experiment in simulation mode for FANToM benchmark (using ToM engine for memory tracking).
     
     Args:
