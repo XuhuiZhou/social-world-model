@@ -263,7 +263,6 @@ class FantomEvalAgent():
                 raise NotImplementedError
             qa['result'] = result
             qa['prediction'] = pred
-        breakpoint()
         return qas
 
     def score_and_analyze(self, df: pd.DataFrame, target_scenario: str = 'inaccessible') -> dict[str, Any]:

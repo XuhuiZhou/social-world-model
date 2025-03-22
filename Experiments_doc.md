@@ -1,4 +1,9 @@
-### Date: 2025-03-18
+### Date: 2025-03-22
+```bash
+uv run python run_benchmarks.py "confaide"  --batch-size=1 --save --model-name="o1-2024-12-17" --mode="vanilla" --continue-mode=continue
+```
+
+### Date: 2025-03-22
 ```python
 uv run python run_benchmarks.py "fantom"  --batch-size=6 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode=continue
 ```

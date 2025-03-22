@@ -209,6 +209,7 @@ class ToMBenchmarkRunner:
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
         result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
+        breakpoint()
         return result
 
     async def _run_simulation(
