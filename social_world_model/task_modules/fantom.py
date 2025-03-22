@@ -12,22 +12,29 @@ import re
 
 FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use [SAME AS LAST ACTION] in the state field to indicate that the state is the same as the last action."""
 
-def prepare_fantom_vanilla(row: dict[str, Any], socialized_context:str="", pure_context: bool = False) -> tuple[str, dict[str, Any]]:
-    if socialized_context:
+def prepare_fantom_vanilla(row: dict[str, Any],  pure_context: bool = False) -> tuple[str, dict[str, Any]]:
+    extra_info = row.get("extra_info", "")
+    if extra_info:
         if pure_context:
-            context = socialized_context
+            context = extra_info
         else:
-            context = row["context"] + "\n" + socialized_context
+            context = row["context"] + "\n" + extra_info
     else:
         context = row["context"]
     template = """
 You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
 
-Context: {context}
-Question: {question}
+## Context
+{context}
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+## Question
+{question}
 """
     input_values = {
         "context": context,
+        "extra_info": extra_info,
         "question": row["complete_question"],
     }
 
@@ -37,7 +44,7 @@ def create_fantom_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
     """Create FANToM result dictionary."""
-    targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents"]
+    targeted_entries = ["set_id", "part_id", "question_type", "tom_type","complete_question","reasoning",  "answer", "correct_answer", "wrong_answer", "transformed_question", "target_agent", "missed_info_accessibility", "context", "question", "socialized_context", "memory", "agents", "extra_info"]
     result = {}
     for entry in targeted_entries:
         if entry in parsed_result:
@@ -543,4 +550,8 @@ async def fantom_simulation(row: dict[str, Any], engine: Optional[SocialWorldMod
        "agents": simulation_dict["agents"],
        "socialized_context": socialized_context
     }
+    row["extra_info"] = result["extra_info"]
+    row["memory"] = result["memory"]
+    row["agents"] = result["agents"]
+    row["socialized_context"] = result["socialized_context"]
     return result
