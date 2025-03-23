@@ -206,7 +206,6 @@ class ToMBenchmarkRunner:
         row["socialized_context"] = socialized_context
         row["extra_info"] = socialized_context.to_natural_language()
         result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
-        breakpoint()
         return result
 
     async def _run_simulation(

@@ -1,6 +1,14 @@
 ### Date: 2025-03-22
 ```bash
-uv run python run_benchmarks.py "confaide"  --batch-size=1 --save --model-name="o1-2024-12-17" --mode="vanilla" --continue-mode=continue
+uv run python run_benchmarks.py "confaide"  --batch-size=40 --save --model-name="o1-2024-12-17" --mode="socialized_context" --continue-mode=continue
+```
+
+```bash
+uv run python run_benchmarks.py "confaide"  --batch-size=20 --save --model-name="o1-2024-12-17" --mode="generate_socialized_context" --continue-mode=continue --example-analysis-file="data/social_contexts_example/confaide.json"
+```
+
+```bash
+uv run python run_benchmarks.py "confaide"  --batch-size=40 --save --model-name="o1-2024-12-17" --mode="vanilla" --continue-mode=continue
 ```
 
 ### Date: 2025-03-22

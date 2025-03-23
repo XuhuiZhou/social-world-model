@@ -8,9 +8,11 @@ def create_confaide_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
     """Create ConFaIde result dictionary."""
-    targeted_entries = ["index", "set_id", "set_question_id", "question_type", "question", "reasoning", "answer", 
-                        "public_info", "private_info", "context", "socialized_context", 
-                        "memory", "agents", "public_info_correct", "private_info_correct", "extra_info"]
+    parsed_result["public_info"] = row["public_info"]
+    parsed_result["private_info"] = row["private_info"]
+    if 'answer' in parsed_result:
+        parsed_result = evaluate_confaide(parsed_result)
+    targeted_entries = ["index", "set_id", "set_question_id", "question_type", "question", "reasoning", "answer", "public_info", "private_info", "public_info_correct", "private_info_correct", "context", "socialized_context", "memory", "agents", "extra_info"]
     result = {}
     for entry in targeted_entries:
         if entry in parsed_result:
@@ -19,11 +21,6 @@ def create_confaide_result(
             result[entry] = row[entry]
         else:
             continue
-    
-    # Evaluate if the result contains required public/private information
-    if "answer" in result:
-        result = evaluate_confaide(result)
-    
     return result
 
 def prepare_confaide_vanilla(row: dict[str, Any], pure_context: bool = False) -> tuple[str, dict[str, Any]]:
