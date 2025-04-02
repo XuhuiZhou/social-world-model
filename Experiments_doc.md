@@ -1,3 +1,6 @@
+### Date: 2025-03-28
+run `together_ai/deepseek-ai/DeepSeek-R1` on confaide dataset.
+
 ### Date: 2025-03-22
 ```bash
 uv run python run_benchmarks.py "confaide"  --batch-size=40 --save --model-name="o1-2024-12-17" --mode="socialized_context" --continue-mode=continue

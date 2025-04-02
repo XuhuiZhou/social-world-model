@@ -18,8 +18,6 @@ def prepare_tomi_vanilla(row: dict[str, Any], pure_context: bool = False) -> tup
         if pure_context:
             story = extra_info
             extra_info = ""
-        else:
-            story = story + "\n" + extra_info
 
     question = row["question"]
     template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A'. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and only include the most detailed location but not other information.
@@ -117,7 +115,7 @@ You need to first reason about the question (majorly focusing where the object h
         reasoning, answer = await engine.reason_about_belief(restructure_question, agent_names, target_agent=row['char1'])
     else:
         return {} 
-    correct_answer = row['answer']
+    correct_answer = row['correct_answer']
     assert isinstance(answer, str)
     is_correct = correct_answer in answer
 

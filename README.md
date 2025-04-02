@@ -50,3 +50,17 @@ uv run mypy --strict .
 ```
 to check the type safety of the code before pushing.
 
+## Programming Social Contexts
+
+The socialized context format uses several special tags to represent repeated information and mental states. Understanding these tags is essential when working with the data.
+
+| Tag | Description |
+|-----|-------------|
+| `<same_as_state />` | Indicates that the observation is identical to the current state. Used to avoid redundancy in the context representation. |
+| `<same_as_last_action />` | Indicates that the current state is identical to the last action taken. Used to maintain continuity between timesteps. |
+| `<mental_state>...</mental_state>` | Encapsulates an agent's internal thoughts, beliefs, or emotions that isn't directly observable by other agents. |
+| `none` | Indicates that there is no observation or action for a particular agent at a given timestep. |
+
+These tags help maintain a compact representation of the socialized context while preserving all necessary information for understanding agent interactions and mental states.
+
+

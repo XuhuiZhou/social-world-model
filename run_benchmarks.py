@@ -238,15 +238,11 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
-            reasoning = response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
+            reasoning = response.split("</reasoning>")[0].strip()
             answer = response.split("<answer>")[1].split("</answer>")[0].strip() 
         except:
-            try:
-                reasoning = response.split("<think>")[1].split("</think>")[0].strip()
-                answer = response.split("<answer>")[1].split("</answer>")[0].strip()
-            except:
-                reasoning = "Failed to parse reasoning"
-                answer = response
+            reasoning = "Failed to parse reasoning"
+            answer = response
 
         return {
            "reasoning": reasoning,
