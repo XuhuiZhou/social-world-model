@@ -128,8 +128,6 @@ async def confaide_simulation(
     row: dict[str, Any], engine: Optional[SocialWorldModel] = None
 ) -> dict[str, Any]:
     assert engine is not None, "Engine must be provided"
-    socialized_context = engine.existing_socialized_contexts[str(row["set_id"])]
-    question = row["complete_question"]
     question_type = row["question_type"]
     if question_type == "meeting-summary":
         # Process meeting summary logic here

@@ -137,10 +137,6 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
-        if "extra_info" in row:
-            extra_info = row["extra_info"]
-        else:
-            extra_info = ""
         if benchmark_type == "tomi":
             template, input_values = prepare_tomi_vanilla(row, pure_context)
         elif benchmark_type == "fantom":  # fantom
@@ -246,7 +242,8 @@ class ToMBenchmarkRunner:
         try:
             reasoning = response.split("</reasoning>")[0].strip()
             answer = response.split("<answer>")[1].split("</answer>")[0].strip()
-        except:
+        except Exception as e:
+            print(f"Failed to parse response: {e}")
             reasoning = "Failed to parse reasoning"
             answer = response
 

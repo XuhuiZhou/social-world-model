@@ -75,15 +75,14 @@ def create_fantom_result(
 
 
 def str_to_list(s: str) -> list[str]:
-    l = s.split(",")
-    return [c.strip(" []'") for c in l]
+    list_str = s.split(",")
+    return [c.strip(" []'") for c in list_str]
 
 
 def flatten_fantom_data(entry: dict[str, Any]) -> list[dict[str, Any]]:
     data_list: list[dict[str, Any]] = []
     fact_qa_question = entry["factQA"]["question"]
     fact_qa_answer = entry["factQA"]["correct_answer"]
-    fact_qa_wrong_answer = entry["factQA"]["wrong_answer"]
     for key in entry.keys():
         if "QAs" in key:
             for question in entry[key]:
@@ -213,7 +212,7 @@ class FantomEvalAgent:
             ]
         excluded_aware_character = False
         included_unaware_character = False
-        if type(qa["correct_answer"]) == str:
+        if isinstance(qa["correct_answer"], str):
             qa["correct_answer"] = str_to_list(qa["correct_answer"])
             qa["wrong_answer"] = str_to_list(qa["wrong_answer"])
         for character in qa["correct_answer"]:
@@ -376,7 +375,7 @@ class FantomEvalAgent:
             return f1
 
         # Convert string results to boolean/float if needed
-        if type(df.result.iloc[0]) == str:
+        if isinstance(df.result.iloc[0], str):
             df["result"] = df["result"].map(
                 lambda x: x == "True" if x.endswith("e") else float(x)
             )
@@ -490,7 +489,7 @@ class FantomEvalAgent:
         ):
             list_wrong = target_df[
                 (target_df["question_type"] == "tom:answerability:list")
-                & (target_df["result"] == False)
+                & (not target_df["result"])
             ][["excluded_aware_character", "included_unaware_character"]].copy()
 
             list_wrong["both"] = (
@@ -506,14 +505,14 @@ class FantomEvalAgent:
                 axis=1,
             )
             report[target_scenario + ":tom:lists:wrong_reasons:freq"] = (
-                list_wrong["reason"].value_counts(normalize=False).to_dict()
-            )  # type: ignore
+                list_wrong["reason"].value_counts(normalize=False).to_dict()  # type: ignore
+            )
         # Error Analysis for Binary Questions
         if "binarized_model_answer" in target_df.columns:
             binary_wrong = (
                 target_df[
                     (target_df["question_type"].str.endswith(":binary"))
-                    & (target_df["result"] == False)
+                    & (not target_df["result"])
                 ]["binarized_model_answer"]
                 .value_counts(normalize=False)
                 .to_dict()
@@ -542,7 +541,7 @@ class FantomEvalAgent:
             tom_order_counts = df1.value_counts()
 
             for idx in tom_order_results.index:
-                if idx[1] == True:
+                if idx[1]:
                     report[f"{target_scenario}:{idx[0]}"] = [
                         tom_order_results[idx],
                         int(tom_order_counts[idx[0]].sum()),
@@ -554,7 +553,7 @@ class FantomEvalAgent:
             belief_counts = df1.value_counts()
 
             for idx in belief_results.index:
-                if idx[1] == True:
+                if idx[1]:
                     report[f"{target_scenario}:{idx[0]}"] = [
                         belief_results[idx],
                         int(belief_counts[idx[0]].sum()),
