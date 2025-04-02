@@ -196,7 +196,7 @@ class ToMBenchmarkRunner:
                 socialized_context = await engine.socialize_context(
                     context, example_analysis
                 )
-                engine.existing_socialized_contexts[row["set_id"]] = socialized_context
+            engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
             if row["index"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]

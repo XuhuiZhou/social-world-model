@@ -1,7 +1,7 @@
 from typing import Any, Optional
 from social_world_model.social_world_model import SocialWorldModel
 
-CONFAIDE_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a meeting transcript. For convenience, you can use <same_as_last_action /> in the state field to indicate that the state is the same as the last action. Document the mental state of the agents where they think things should be kept as a secret."""
+CONFAIDE_SOCIALIZED_CONTEXT_PROMPT = """For convenience, you can use <same_as_last_action /> in the state field to indicate that the state is the same as the last action."""
 
 
 def create_confaide_result(
