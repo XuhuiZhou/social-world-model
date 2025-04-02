@@ -61,8 +61,3 @@ The results are saved in `data/tomi_results/wo_analysis_example_socialized_conte
 ```python
 python run_benchmarks.py run-benchmark "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=6 --save --model-name="o1-2024-12-17" --mode="socialized_context" --example-analysis-file="data/social_contexts_example/tomi.json"
 ```
-
-
-
-
-

@@ -1,14 +1,12 @@
 import json
 import os
 import csv
-import pandas as pd
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Any, DefaultDict, Literal, Optional, get_args, cast
+from typing import Dict, List, Any, DefaultDict, Literal
 import typer
 from rich import print
 from rich.console import Console
-from rich.table import Table
 
 # Create type aliases
 BenchmarkType = Literal["tomi", "fantom"]

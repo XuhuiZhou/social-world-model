@@ -1,10 +1,14 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
 from social_world_model.agents import LLMAgent
-from social_world_model.database import Observation, SocializedContext, SocializedContextForModel, SocializedStructure
+from social_world_model.database import (
+    Observation,
+    SocializedContext,
+    SocializedContextForModel,
+    SocializedStructure,
+)
 from sotopia.generation_utils import agenerate
-from typing import Any
 from social_world_model.engine import dictlize
 import json
 
@@ -138,10 +142,10 @@ class SocialWorldModel:
     ) -> SocializedContext:
         """
         Decode special symbols in the socialized context.
-        
+
         Args:
             socialized_context: The socialized context with potential special symbols
-            
+
         Returns:
             Decoded socialized context with special symbols replaced with actual text
         """
@@ -151,9 +155,9 @@ class SocialWorldModel:
         decoded_context = SocializedContext(
             agents_names=socialized_context.agents_names.copy(),
             socialized_context=[],
-            context_manual=socialized_context.context_manual
+            context_manual=socialized_context.context_manual,
         )
-        
+
         # Process each socialized structure
         for step in socialized_context.socialized_context:
             # Create a new structure for the current step
@@ -161,18 +165,22 @@ class SocialWorldModel:
                 timestep=step.timestep,
                 state=step.state.replace("<same_as_last_action />", last_action),
                 observations={},
-                actions={}
+                actions={},
             )
-            
+
             # Process observations
             for agent_name, observation in step.observations.items():
-                decoded_step.observations[agent_name] = observation.replace("<same_as_state />", decoded_step.state)
-                if observation!=last_action and agent_name==last_action_agent:
-                    if observation=="none":
+                decoded_step.observations[agent_name] = observation.replace(
+                    "<same_as_state />", decoded_step.state
+                )
+                if observation != last_action and agent_name == last_action_agent:
+                    if observation == "none":
                         decoded_step.observations[agent_name] = last_action
                     else:
-                        decoded_step.observations[agent_name] = last_action + observation
-            
+                        decoded_step.observations[agent_name] = (
+                            last_action + observation
+                        )
+
             # Process actions
             for agent_name, action in step.actions.items():
                 if action != "none" and not action.startswith("agent_name"):
@@ -181,12 +189,12 @@ class SocialWorldModel:
                     # TODO: This is a strong assumption that only one action is taken per timestep
                     last_action = action
                     last_action_agent = agent_name
-                
+
                 decoded_step.actions[agent_name] = action
-            
+
             # Add the decoded step to the new context
             decoded_context.socialized_context.append(decoded_step)
-        
+
         return decoded_context
 
     async def initialize_simulation_from_socialized_context(
@@ -194,19 +202,21 @@ class SocialWorldModel:
     ) -> None:
         """
         Initialize simulation from a socialized context.
-        
+
         Args:
             socialized_context: The socialized context to initialize from
         """
-        decoded_socialized_context = await self.decode_socialized_context(socialized_context)
+        decoded_socialized_context = await self.decode_socialized_context(
+            socialized_context
+        )
         # Use the SocializedContext object directly
         socialized_events = decoded_socialized_context.socialized_context
         agent_names = decoded_socialized_context.agents_names
-        
+
         # Add agents
         for agent_name in agent_names:
             self.add_agent(agent_name)
-            
+
         # Process events
         for step in socialized_events:
             # Add observations to agent message history
@@ -227,7 +237,7 @@ class SocialWorldModel:
                         ],
                     )
                 )
-            
+
     async def reason_about_belief(
         self,
         question: str,
@@ -325,15 +335,19 @@ class SocialWorldModel:
             template=template,
             input_values=input_values,
             temperature=self.temperature,
-    output_parser=PydanticOutputParser(pydantic_object=SocializedContextForModel),
+            output_parser=PydanticOutputParser(
+                pydantic_object=SocializedContextForModel
+            ),
             structured_output=True,
         )
         assert isinstance(
             socialized_context, SocializedContextForModel
         ), "Socialized context is not a SocializedContext"
         socialized_context_dict = dictlize(socialized_context)
-        context_manual = f"Here's how to interpret the socialized context: \n{json.dumps(SocializedContextForModel.model_json_schema(), indent=2)}\nTask specific instructions:{self.task_specific_instructions}"  
-        socialized_context_processed = SocializedContext(**socialized_context_dict, context_manual=context_manual)
+        context_manual = f"Here's how to interpret the socialized context: \n{json.dumps(SocializedContextForModel.model_json_schema(), indent=2)}\nTask specific instructions:{self.task_specific_instructions}"
+        socialized_context_processed = SocializedContext(
+            **socialized_context_dict, context_manual=context_manual
+        )
         return socialized_context_processed
 
     async def critique_and_improve_context(
