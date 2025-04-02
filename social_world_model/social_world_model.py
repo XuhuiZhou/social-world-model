@@ -159,22 +159,19 @@ class SocialWorldModel:
             # Create a new structure for the current step
             decoded_step = SocializedStructure(
                 timestep=step.timestep,
-                state=step.state if step.state != '[SAME AS LAST ACTION]' else last_action,
+                state=step.state.replace("<same_as_last_action />", last_action),
                 observations={},
                 actions={}
             )
             
             # Process observations
             for agent_name, observation in step.observations.items():
-                if observation == "[SAME AS STATE]":
-                    decoded_step.observations[agent_name] = decoded_step.state
-                elif observation!=last_action and agent_name==last_action_agent:
+                decoded_step.observations[agent_name] = observation.replace("<same_as_state />", decoded_step.state)
+                if observation!=last_action and agent_name==last_action_agent:
                     if observation=="none":
                         decoded_step.observations[agent_name] = last_action
                     else:
                         decoded_step.observations[agent_name] = last_action + observation
-                else:
-                    decoded_step.observations[agent_name] = observation
             
             # Process actions
             for agent_name, action in step.actions.items():

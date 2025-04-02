@@ -10,15 +10,16 @@ from social_world_model.social_world_model import SocialWorldModel
 import asyncio
 import re
 
-FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use [SAME AS LAST ACTION] in the state field to indicate that the state is the same as the last action."""
+FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use <same_as_last_action /> in the state field to indicate that the state is the same as the last action."""
 
 def prepare_fantom_vanilla(row: dict[str, Any],  pure_context: bool = False) -> tuple[str, dict[str, Any]]:
     extra_info = row.get("extra_info", "")
     if extra_info:
         if pure_context:
             context = extra_info
+            extra_info = ""
         else:
-            context = row["context"] + "\n" + extra_info
+            context = row["context"]
     else:
         context = row["context"]
     template = """
