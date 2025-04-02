@@ -46,6 +46,12 @@ for a bug fix:
 
 Run:
 ```bash
+uv run pre-commit run --all-files
+```
+to check the code quality before pushing.
+
+Run:
+```bash
 uv run mypy --strict .
 ```
 to check the type safety of the code before pushing.
