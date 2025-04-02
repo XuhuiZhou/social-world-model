@@ -68,5 +68,3 @@ The socialized context format uses several special tags to represent repeated in
 | `none` | Indicates that there is no observation or action for a particular agent at a given timestep. |
 
 These tags help maintain a compact representation of the socialized context while preserving all necessary information for understanding agent interactions and mental states.
-
-

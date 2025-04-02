@@ -1,6 +1,7 @@
 from pydantic import Field, BaseModel
 from sotopia.messages import ActionType
 
+
 class SocializedStructureForModel(BaseModel):
     timestep: str = Field(
         description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state.",
@@ -14,7 +15,6 @@ class SocializedStructureForModel(BaseModel):
     actions: list[str] = Field(
         description="The actions for each agent in the social world at this timestep. The length of the list should be the same as the number of agents. Put 'none' if the agent does not take any action at this timestep. The format for each entry in the list is: 'agent_name: action'"
     )
-
 
 
 class SocializedStructure(BaseModel):
@@ -35,6 +35,7 @@ class SocializedStructure(BaseModel):
             + "\n".join([f"{key}: {value}" for key, value in self.actions.items()])
         )
 
+
 class SocializedContextForModel(BaseModel):
     agents_names: list[str] = Field(description="The names of the agents")
     socialized_context: list[SocializedStructureForModel] = Field(
@@ -48,11 +49,10 @@ class SocializedContext(BaseModel):
     context_manual: str = Field(
         description="The manual of how to interpret the socialized context, it should come from the prompt of generating the socialized context."
     )
+
     def to_natural_language(self) -> str:
-        return (
-            "### Socialized Context\n"
-            + self.model_dump_json(indent=2)
-        )
+        return "### Socialized Context\n" + self.model_dump_json(indent=2)
+
 
 class Observation(BaseModel):
     agent_name: str = Field(description="the name of the agent")
