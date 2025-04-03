@@ -20,19 +20,19 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
   // Generate colors for agents
   const getAgentColorClass = (agentIndex: number) => {
     const colors = [
-      { bg: 'bg-blue-500', border: 'border-blue-600' },
-      { bg: 'bg-green-500', border: 'border-green-600' },
-      { bg: 'bg-purple-500', border: 'border-purple-600' },
-      { bg: 'bg-yellow-500', border: 'border-yellow-600' },
-      { bg: 'bg-red-500', border: 'border-red-600' },
-      { bg: 'bg-indigo-500', border: 'border-indigo-600' }
+      { bg: 'bg-blue-600', border: 'border-blue-700' },
+      { bg: 'bg-emerald-600', border: 'border-emerald-700' },
+      { bg: 'bg-violet-600', border: 'border-violet-700' },
+      { bg: 'bg-amber-600', border: 'border-amber-700' },
+      { bg: 'bg-rose-600', border: 'border-rose-700' },
+      { bg: 'bg-cyan-600', border: 'border-cyan-700' }
     ];
     return colors[agentIndex % colors.length];
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto mb-12">
-      <h2 className="text-2xl font-bold text-blue-800 mb-6">Agent Presence Timeline</h2>
+    <div className="w-full max-w-5xl mx-auto mb-12">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6 tracking-tight">Agent Presence Timeline</h2>
 
       <div className="overflow-x-auto">
         <div className="min-w-max">
@@ -42,7 +42,7 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
             <div className="flex-1 grid grid-cols-14 gap-1">
               {socialized_context.map((context) => (
                 <div key={context.timestep} className="h-8 flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-700">{context.timestep}</span>
+                  <span className="text-sm font-medium text-gray-600">{context.timestep}</span>
                 </div>
               ))}
             </div>
@@ -54,7 +54,7 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
             return (
               <div key={name} className="flex mb-3 items-center">
                 <div className="w-32 flex-shrink-0">
-                  <span className="font-medium text-gray-800">{name}</span>
+                  <span className={`font-medium ${colorClasses.bg.replace('bg-', 'text-')}`}>{name}</span>
                 </div>
                 <div className="flex-1 grid grid-cols-14 gap-1">
                   {socialized_context.map((context) => {
@@ -62,7 +62,7 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
                     return (
                       <div
                         key={context.timestep}
-                        className={`h-8 rounded-md border-2 transition-all ${
+                        className={`h-8 rounded-md border transition-all ${
                           present
                             ? `${colorClasses.bg} ${colorClasses.border} opacity-100`
                             : 'border-gray-200 bg-gray-50 opacity-50'

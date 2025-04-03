@@ -15,15 +15,28 @@ const Timeline: React.FC<TimelineProps> = ({ data }) => {
     setActiveStep(activeStep === timestep ? null : timestep);
   };
 
+  // Generate colors for agents
+  const getAgentColorClass = (index: number) => {
+    const colors = [
+      'bg-blue-600',
+      'bg-emerald-600',
+      'bg-violet-600',
+      'bg-amber-600',
+      'bg-rose-600',
+      'bg-cyan-600'
+    ];
+    return colors[index % colors.length];
+  };
+
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Agents</h2>
+    <div className="w-full max-w-5xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-4">Agents</h2>
         <div className="flex flex-wrap gap-2">
           {data.agents_names.map((name, index) => (
             <div
               key={index}
-              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full shadow-md"
+              className={`px-4 py-2 ${getAgentColorClass(index)} text-white rounded-md text-sm font-medium`}
             >
               {name}
             </div>
@@ -31,7 +44,7 @@ const Timeline: React.FC<TimelineProps> = ({ data }) => {
         </div>
       </div>
 
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Conversation Timeline</h2>
+      <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">Conversation Timeline</h2>
 
       <div className="space-y-4">
         {data.socialized_context.map((context) => (
