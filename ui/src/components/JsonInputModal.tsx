@@ -19,25 +19,25 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
   const handleSubmit = () => {
     try {
       const parsedData = JSON.parse(jsonInput) as SocialData;
-      
+
       // Basic validation
       if (!parsedData.agents_names || !Array.isArray(parsedData.agents_names)) {
         throw new Error('Invalid data: agents_names must be an array');
       }
-      
+
       if (!parsedData.socialized_context || !Array.isArray(parsedData.socialized_context)) {
         throw new Error('Invalid data: socialized_context must be an array');
       }
-      
+
       // Validate each context item
       parsedData.socialized_context.forEach((context, index) => {
-        if (!context.timestep || !context.state || 
-            !Array.isArray(context.observations) || 
+        if (!context.timestep || !context.state ||
+            !Array.isArray(context.observations) ||
             !Array.isArray(context.actions)) {
           throw new Error(`Invalid context at index ${index}`);
         }
       });
-      
+
       onDataSubmit(parsedData);
       setJsonInput('');
       onClose();
@@ -52,7 +52,7 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-md p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold mb-5 text-gray-900 tracking-tight">Paste JSON Data</h2>
-        
+
         <div className="mb-5">
           <label htmlFor="json-input" className="block text-sm font-medium text-gray-700 mb-2">
             Enter JSON data in the format:
@@ -79,13 +79,13 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
             style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}
           />
         </div>
-        
+
         {error && (
           <div className="mb-5 p-3 bg-red-50 text-red-700 rounded-md font-medium border border-red-200">
             {error}
           </div>
         )}
-        
+
         <div className="flex justify-end space-x-3">
           <button
             className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 font-medium text-sm"
@@ -103,4 +103,4 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
       </div>
     </div>
   );
-} 
+}

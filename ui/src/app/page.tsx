@@ -55,7 +55,7 @@ export default function Home() {
         </div>
       </footer>
 
-      <JsonInputModal 
+      <JsonInputModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onDataSubmit={handleDataSubmit}

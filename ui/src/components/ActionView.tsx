@@ -75,8 +75,8 @@ const ActionView: React.FC<ActionViewProps> = ({ data }) => {
           <button
             onClick={() => setShowState(!showState)}
             className={`px-4 py-2 rounded-md font-medium transition-colors text-sm ${
-              showState 
-                ? 'bg-black text-white' 
+              showState
+                ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -85,8 +85,8 @@ const ActionView: React.FC<ActionViewProps> = ({ data }) => {
           <button
             onClick={() => setShowCorresponding(!showCorresponding)}
             className={`px-4 py-2 rounded-md font-medium transition-colors text-sm ${
-              showCorresponding 
-                ? 'bg-black text-white' 
+              showCorresponding
+                ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -95,8 +95,8 @@ const ActionView: React.FC<ActionViewProps> = ({ data }) => {
           <button
             onClick={() => setShowAll(!showAll)}
             className={`px-4 py-2 rounded-md font-medium transition-colors text-sm ${
-              showAll 
-                ? 'bg-black text-white' 
+              showAll
+                ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
