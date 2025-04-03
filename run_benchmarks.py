@@ -16,18 +16,24 @@ from social_world_model.task_modules import (
     fantom_simulation,
     flatten_fantom_data,
     confaide_simulation,
+    hitom_simulation,
     prepare_tomi_vanilla,
     prepare_fantom_vanilla,
     prepare_confaide_vanilla,
+    prepare_hitom_vanilla,
     create_tomi_result,
     create_fantom_result,
     create_confaide_result,
+    create_hitom_result,
     tomi_evaluation_report,
     fantom_evaluation_report,
     confaide_evaluation_report,
+    hitom_evaluation_report,
     TOMI_SOCIALIZED_CONTEXT_PROMPT,
     FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
+    HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    reformat_hitom_data,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -44,19 +50,14 @@ logging.basicConfig(
 app = typer.Typer(pretty_exceptions_enable=False)
 
 # Create type aliases using the constants
-ModeType = Literal[
-    "vanilla",
-    "socialized_context",
-    "pure_context",
-    "simulation",
-    "generate_socialized_context",
-]
+ModeType = Literal["vanilla", "socialized_context", "pure_context", "simulation", "generate_socialized_context"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide"]
+BenchmarkType = Literal["tomi", "fantom", "confaide", "hitom"]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
+    "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 
@@ -137,12 +138,18 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
+        if "extra_info" in row:
+            extra_info = row["extra_info"]
+        else:
+            extra_info = ""
         if benchmark_type == "tomi":
             template, input_values = prepare_tomi_vanilla(row, pure_context)
         elif benchmark_type == "fantom":  # fantom
             template, input_values = prepare_fantom_vanilla(row, pure_context)
         elif benchmark_type == "confaide":  # confaide
             template, input_values = prepare_confaide_vanilla(row, pure_context)
+        elif benchmark_type == "hitom":
+            template, input_values = prepare_hitom_vanilla(row, pure_context)
         # Generate response
         response = await agenerate(
             model_name=self.model_name,
@@ -162,6 +169,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":
             parsed_result = self._parse_response(response, row)
             result = create_confaide_result(parsed_result, row)
+        elif benchmark_type == "hitom":
+            parsed_result = self._parse_response(response, row)
+            result = create_hitom_result(parsed_result, row)
         return result
 
     async def _run_socialized_context(
@@ -173,22 +183,23 @@ class ToMBenchmarkRunner:
         engine: Optional[SocialWorldModel] = None,
     ) -> dict[str, Any]:
         """Run experiment in socialized_context mode (using ToM engine for memory tracking)."""
-        assert isinstance(
-            engine, SocialWorldModel
-        ), "Engine must be an instance of ToMEngine"
+        assert isinstance(engine, SocialWorldModel), "Engine must be an instance of ToMEngine"
 
         if benchmark_type == "tomi":
             context = " ".join(eval(row["story"]))
-
+        elif benchmark_type == "hitom":
+            context = row["story"]
         else:
             context = row["context"]
-        engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
+        engine.set_task_specific_instructions(
+            SocializedContextPrompt[benchmark_type]
+        )
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
         else:
             example_analysis = ""
         if (
-            benchmark_type == "fantom" or benchmark_type == "confaide"
+            benchmark_type in ["fantom", "confaide", "hitom"]
         ):  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
@@ -196,7 +207,7 @@ class ToMBenchmarkRunner:
                 socialized_context = await engine.socialize_context(
                     context, example_analysis
                 )
-            engine.existing_socialized_contexts[row["set_id"]] = socialized_context
+                engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
             if row["index"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
@@ -217,9 +228,7 @@ class ToMBenchmarkRunner:
         engine: Optional[SocialWorldModel] = None,
     ) -> dict[str, Any]:
         """Run experiment in simulation mode (using ToM engine for memory tracking)."""
-        assert isinstance(
-            engine, SocialWorldModel
-        ), "Engine must be an instance of ToMEngine"
+        assert isinstance(engine, SocialWorldModel), "Engine must be an instance of ToMEngine"
         if benchmark_type == "tomi":
             assert (
                 str(row["index"]) in engine.existing_socialized_contexts
@@ -231,25 +240,33 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":
             parsed_result = await confaide_simulation(row, engine)
             result = create_confaide_result(parsed_result, row)
+        elif benchmark_type == "hitom":
+            parsed_result = await hitom_simulation(row, engine)
+            result = create_hitom_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
             result = await self._run_vanilla(row, benchmark_type)
         return result
 
-    def _parse_response(self, response: str, row: dict[str, Any]) -> dict[str, Any]:
+    def _parse_response(
+        self, response: str, row: dict[str, Any]
+    ) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
-            reasoning = response.split("</reasoning>")[0].strip()
-            answer = response.split("<answer>")[1].split("</answer>")[0].strip()
-        except Exception as e:
-            print(f"Failed to parse response: {e}")
-            reasoning = "Failed to parse reasoning"
-            answer = response
+            reasoning = response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
+            answer = response.split("<answer>")[1].split("</answer>")[0].strip() 
+        except:
+            try:
+                reasoning = response.split("<think>")[1].split("</think>")[0].strip()
+                answer = response.split("<answer>")[1].split("</answer>")[0].strip()
+            except:
+                reasoning = "Failed to parse reasoning"
+                answer = response
 
         return {
-            "reasoning": reasoning,
-            "answer": answer,
+           "reasoning": reasoning,
+           "answer": answer,
         }
 
     def _save_result(self, result: dict[str, Any], result_path: Path) -> None:
@@ -289,7 +306,7 @@ def validate_continue_mode(value: str) -> str:
 def run_benchmark(
     benchmark_type: str = typer.Argument(
         ...,
-        help="Type of benchmark to run (tomi/fantom/confaide)",
+        help="Type of benchmark to run (tomi/fantom/confaide/hitom)",
         callback=validate_benchmark_type,
     ),
     dataset_path: Optional[str] = None,
@@ -316,6 +333,7 @@ def run_benchmark(
             "tomi": "./data/rephrased_tomi_test_600.csv",
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
+            "hitom": "./data/hitom_data/processed_hitom_data.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -323,9 +341,9 @@ def run_benchmark(
         data = pd.read_csv(dataset_path).fillna("")
     except Exception as e:
         # Load jsonl file for fantom and confaide datasets
-        if dataset_path.endswith(".jsonl"):
+        if dataset_path.endswith('.jsonl'):
             data_list = []
-            with open(dataset_path, "r") as f:
+            with open(dataset_path, 'r') as f:
                 for line in f:
                     entry = json.loads(line)
                     if benchmark_type == "fantom":
@@ -334,12 +352,16 @@ def run_benchmark(
                         # For confaide, we assume the data is already flattened
                         data_list.append(entry)
             data = pd.DataFrame(data_list)
-            data["index"] = range(len(data))
+            data['index'] = range(len(data))
+        elif dataset_path.endswith('.json'):
+            with open(dataset_path, 'r') as f:
+                data_list = json.load(f)
+                data = pd.DataFrame(data_list)
         else:
             raise ValueError(f"Data set in a different format: {e}")
     if mode == "generate_socialized_context":
         # For fantom and confaide, select a subset of unique set_ids
-        if benchmark_type in ["fantom", "confaide"]:
+        if benchmark_type in ["fantom", "confaide", "hitom"]:
             data = data.groupby("set_id").head(1).reset_index(drop=True)
             mode = "socialized_context"
 
@@ -356,7 +378,6 @@ def run_benchmark(
             example_analysis_file=example_analysis_file,
         )
     )
-
 
 async def _run_benchmark(
     benchmark_type: str,
@@ -377,15 +398,13 @@ async def _run_benchmark(
             "data_path": Path(
                 f"data/{benchmark_type}_results/socialized_context_o1-2024-12-17_{dataset_name}"
             ),
-            "identifier_key": "set_id"
-            if benchmark_type in ["fantom", "confaide"]
-            else None,
+            "identifier_key": "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None,
         },
     )
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
     all_results = []
     for i in range(0, len(data), batch_size):
-        batch = data.iloc[i : i + batch_size].to_dict("records")
+        batch = data.iloc[i : i + batch_size].to_dict('records')
         print(
             f"\nProcessing batch {i//batch_size + 1}/{(len(data) + batch_size - 1)//batch_size}"
         )
@@ -421,7 +440,8 @@ async def _run_benchmark(
         fantom_evaluation_report(all_results)
     elif benchmark_type == "confaide":
         confaide_evaluation_report(all_results)
-
+    elif benchmark_type == "hitom":
+        hitom_evaluation_report(all_results)
 
 if __name__ == "__main__":
     app()
