@@ -12,7 +12,7 @@ A beautiful web interface for visualizing agent interactions and conversations f
 
 ### Prerequisites
 
-- Node.js 18.17 or later
+- [Bun](https://bun.sh/) 1.0.0 or later
 
 ### Installation
 
@@ -23,13 +23,13 @@ A beautiful web interface for visualizing agent interactions and conversations f
    ```
 3. Install dependencies:
    ```bash
-   npm install
+   bun install
    ```
 
 ### Running the Development Server
 
 ```bash
-npm run dev
+bun dev
 ```
 
 This will start the development server on [http://localhost:3000](http://localhost:3000).
@@ -37,19 +37,19 @@ This will start the development server on [http://localhost:3000](http://localho
 For allowing external access and specifying a port:
 
 ```bash
-npm run dev -- -p 12000 -H 0.0.0.0
+bun dev -- -p 12000 -H 0.0.0.0
 ```
 
 ### Building for Production
 
 ```bash
-npm run build
+bun run build
 ```
 
 ### Running in Production Mode
 
 ```bash
-npm start
+bun start
 ```
 
 ## Data Format
@@ -88,6 +88,7 @@ The UI expects data in the following JSON format:
 - React
 - TypeScript
 - Tailwind CSS
+- Bun (JavaScript runtime & package manager)
 
 ## Learn More
 
