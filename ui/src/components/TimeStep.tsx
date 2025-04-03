@@ -12,7 +12,7 @@ interface TimeStepProps {
 
 const TimeStep: React.FC<TimeStepProps> = ({ data, agentNames, isActive, onClick }) => {
   return (
-    <div 
+    <div
       className={`border rounded-lg p-4 mb-4 cursor-pointer transition-all ${
         isActive ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:border-blue-300'
       }`}
@@ -24,9 +24,9 @@ const TimeStep: React.FC<TimeStepProps> = ({ data, agentNames, isActive, onClick
           <span className="text-sm text-gray-500">Click to expand</span>
         )}
       </div>
-      
+
       <p className="text-gray-700 mb-2">{data.state}</p>
-      
+
       {isActive && (
         <div className="mt-4">
           <div className="mb-4">
@@ -41,7 +41,7 @@ const TimeStep: React.FC<TimeStepProps> = ({ data, agentNames, isActive, onClick
               ))}
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Actions:</h4>
             <ul className="space-y-1 pl-4">

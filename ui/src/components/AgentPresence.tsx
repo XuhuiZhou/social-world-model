@@ -9,15 +9,15 @@ interface AgentPresenceProps {
 
 const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
   const { agents_names, socialized_context } = data;
-  
+
   // Determine if an agent is present in a given timestep
   const isAgentPresent = (agentIndex: number, timestep: string) => {
     const context = socialized_context.find(c => c.timestep === timestep);
     if (!context) return false;
-    
+
     return !context.observations[agentIndex].includes('none');
   };
-  
+
   // Generate colors for agents
   const getAgentColorClass = (agentIndex: number) => {
     const agentColors = [
@@ -30,11 +30,11 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
     ];
     return agentColors[agentIndex % agentColors.length];
   };
-  
+
   return (
     <div className="w-full max-w-4xl mx-auto mb-12">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">Agent Presence Timeline</h2>
-      
+
       <div className="overflow-x-auto">
         <div className="min-w-max">
           <div className="flex mb-2">
@@ -45,16 +45,16 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
               </div>
             ))}
           </div>
-          
+
           {agents_names.map((name, agentIndex) => (
             <div key={name} className="flex items-center mb-3">
               <div className="w-24 flex-shrink-0 font-medium text-gray-800">{name}</div>
               {socialized_context.map((context) => (
                 <div key={context.timestep} className="w-10 flex justify-center items-center">
-                  <div 
+                  <div
                     className={`w-6 h-6 rounded-full ${
-                      isAgentPresent(agentIndex, context.timestep) 
-                        ? getAgentColorClass(agentIndex) 
+                      isAgentPresent(agentIndex, context.timestep)
+                        ? getAgentColorClass(agentIndex)
                         : 'bg-gray-200'
                     }`}
                   ></div>

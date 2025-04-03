@@ -60,7 +60,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({ data }) => {
   return (
     <div className="w-full max-w-4xl mx-auto mb-12">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">Conversation</h2>
-      
+
       <div className="mb-6 flex flex-wrap gap-2">
         {agents_names.map(agent => {
           const isSelected = selectedAgents.includes(agent);
@@ -69,8 +69,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({ data }) => {
               key={agent}
               onClick={() => toggleAgent(agent)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                isSelected 
-                  ? `${getAgentColorClass(agent, 'bg')} text-white` 
+                isSelected
+                  ? `${getAgentColorClass(agent, 'bg')} text-white`
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -79,7 +79,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({ data }) => {
           );
         })}
       </div>
-      
+
       <div className="space-y-4">
         {filteredMessages.length > 0 ? (
           filteredMessages.map((msg, index) => (
