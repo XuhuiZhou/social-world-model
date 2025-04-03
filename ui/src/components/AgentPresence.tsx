@@ -14,54 +14,67 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
   const isAgentPresent = (agentIndex: number, timestep: string) => {
     const context = socialized_context.find(c => c.timestep === timestep);
     if (!context) return false;
-
     return !context.observations[agentIndex].includes('none');
   };
 
   // Generate colors for agents
   const getAgentColorClass = (agentIndex: number) => {
-    const agentColors = [
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-purple-500',
-      'bg-yellow-500',
-      'bg-red-500',
-      'bg-indigo-500',
+    const colors = [
+      { bg: 'bg-blue-500', border: 'border-blue-600' },
+      { bg: 'bg-green-500', border: 'border-green-600' },
+      { bg: 'bg-purple-500', border: 'border-purple-600' },
+      { bg: 'bg-yellow-500', border: 'border-yellow-600' },
+      { bg: 'bg-red-500', border: 'border-red-600' },
+      { bg: 'bg-indigo-500', border: 'border-indigo-600' }
     ];
-    return agentColors[agentIndex % agentColors.length];
+    return colors[agentIndex % colors.length];
   };
 
   return (
     <div className="w-full max-w-4xl mx-auto mb-12">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Agent Presence Timeline</h2>
+      <h2 className="text-2xl font-bold text-blue-800 mb-6">Agent Presence Timeline</h2>
 
       <div className="overflow-x-auto">
         <div className="min-w-max">
-          <div className="flex mb-2">
-            <div className="w-24 flex-shrink-0"></div>
-            {socialized_context.map((context) => (
-              <div key={context.timestep} className="w-10 text-center font-medium text-gray-700">
-                {context.timestep}
-              </div>
-            ))}
-          </div>
-
-          {agents_names.map((name, agentIndex) => (
-            <div key={name} className="flex items-center mb-3">
-              <div className="w-24 flex-shrink-0 font-medium text-gray-800">{name}</div>
+          {/* Timeline header */}
+          <div className="flex mb-4">
+            <div className="w-32 flex-shrink-0"></div>
+            <div className="flex-1 grid grid-cols-14 gap-1">
               {socialized_context.map((context) => (
-                <div key={context.timestep} className="w-10 flex justify-center items-center">
-                  <div
-                    className={`w-6 h-6 rounded-full ${
-                      isAgentPresent(agentIndex, context.timestep)
-                        ? getAgentColorClass(agentIndex)
-                        : 'bg-gray-200'
-                    }`}
-                  ></div>
+                <div key={context.timestep} className="h-8 flex items-center justify-center">
+                  <span className="text-sm font-medium text-gray-700">{context.timestep}</span>
                 </div>
               ))}
             </div>
-          ))}
+          </div>
+
+          {/* Agent rows */}
+          {agents_names.map((name, agentIndex) => {
+            const colorClasses = getAgentColorClass(agentIndex);
+            return (
+              <div key={name} className="flex mb-3 items-center">
+                <div className="w-32 flex-shrink-0">
+                  <span className="font-medium text-gray-800">{name}</span>
+                </div>
+                <div className="flex-1 grid grid-cols-14 gap-1">
+                  {socialized_context.map((context) => {
+                    const present = isAgentPresent(agentIndex, context.timestep);
+                    return (
+                      <div
+                        key={context.timestep}
+                        className={`h-8 rounded-md border-2 transition-all ${
+                          present
+                            ? `${colorClasses.bg} ${colorClasses.border} opacity-100`
+                            : 'border-gray-200 bg-gray-50 opacity-50'
+                        }`}
+                        title={`${name} - Timestep ${context.timestep}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
