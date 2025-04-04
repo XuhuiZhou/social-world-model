@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**": {
+      "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
+    }
+  },
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/"
+    },
+    {
+      "src": "/(.+\\.[a-zA-Z]+)$",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/api/ai/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}
