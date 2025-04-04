@@ -49,6 +49,24 @@ Below is the story and question:
 
     return template, input_values
 
+def evaluate_response(result: dict[str, Any]) -> dict[str, Any]:
+    # dict(re.findall(r'([A-Z])\. ([^,]+)', choice_str))
+    choices = result["choices"]
+    answer = result["answer"].strip().capitalize()
+    
+    answer_dict = dict(re.findall(r'([A-Z])\. ([^,]+)', choices))
+    answer_list = list(answer_dict.keys())
+    
+    if answer not in answer_list:
+        result["is_correct"] = False
+    else:
+        if answer_dict[answer] == result["correct_answer"]:
+            result["is_correct"] = True
+        else:
+            result["is_correct"] = False
+    
+    return result
+
 def create_hitom_result(
         parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
@@ -62,31 +80,11 @@ def create_hitom_result(
             result[entry] = row[entry]
         else:
             continue
+    result = evaluate_response(result)
     return result
-
-def evaluate_response(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    # dict(re.findall(r'([A-Z])\. ([^,]+)', choice_str))
-    for result in results:
-        choices = result["choices"]
-        answer = result["answer"].strip().capitalize()
-        
-        answer_dict = dict(re.findall(r'([A-Z])\. ([^,]+)', choices))
-        answer_list = list(answer_dict.keys())
-        
-        if answer not in answer_list:
-            result["is_correct"] = False
-        else:
-            if answer_dict[answer] == result["correct_answer"]:
-                result["is_correct"] = True
-            else:
-                result["is_correct"] = False
-    
-    return results
 
 def hitom_evaluation_report(results: list[dict[str, Any]]) -> None:
     """Evaluate ToMi result."""
-    
-    results = evaluate_response(results)
     
     correct_count = 0
     for result in results:
