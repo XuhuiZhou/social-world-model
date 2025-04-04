@@ -34,12 +34,12 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
         if (!context.timestep || !context.state) {
           throw new Error(`Invalid context at index ${index}: missing timestep or state`);
         }
-        
+
         // Check if observations is an object
         if (!(typeof context.observations === 'object' && context.observations !== null)) {
           throw new Error(`Invalid context at index ${index}: observations must be an object`);
         }
-        
+
         // Check if actions is an object
         if (!(typeof context.actions === 'object' && context.actions !== null)) {
           throw new Error(`Invalid context at index ${index}: actions must be an object`);
