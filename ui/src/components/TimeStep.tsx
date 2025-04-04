@@ -32,10 +32,15 @@ const TimeStep: React.FC<TimeStepProps> = ({ data, agentNames, isActive, onClick
           <div className="mb-5">
             <h4 className="font-medium text-gray-900 mb-3">Observations:</h4>
             <ul className="space-y-2 pl-4">
-              {data.observations.map((observation, index) => (
-                <li key={`obs-${index}`} className="text-gray-600">
-                  {observation !== `${agentNames[index]}: none` ? observation : (
-                    <span className="text-gray-400 italic">{agentNames[index]} is not present</span>
+              {agentNames.map(agent => (
+                <li key={`obs-${agent}`} className="text-gray-600">
+                  {data.observations[agent] !== 'none' ? (
+                    <span>
+                      <span className="font-medium">{agent}: </span>
+                      {data.observations[agent] === '[SAME AS STATE]' ? data.state : data.observations[agent]}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 italic">{agent} is not present</span>
                   )}
                 </li>
               ))}
@@ -45,9 +50,10 @@ const TimeStep: React.FC<TimeStepProps> = ({ data, agentNames, isActive, onClick
           <div>
             <h4 className="font-medium text-gray-900 mb-3">Actions:</h4>
             <ul className="space-y-2 pl-4">
-              {data.actions.map((action, index) => (
-                <li key={`act-${index}`} className={`${action.includes('none') ? 'text-gray-400 italic' : 'text-gray-600'}`}>
-                  {action}
+              {agentNames.map(agent => (
+                <li key={`act-${agent}`} className={`${data.actions[agent] === 'none' ? 'text-gray-400 italic' : 'text-gray-600'}`}>
+                  <span className="font-medium">{agent}: </span>
+                  {data.actions[agent]}
                 </li>
               ))}
             </ul>

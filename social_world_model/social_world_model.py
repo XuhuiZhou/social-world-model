@@ -340,6 +340,7 @@ class SocialWorldModel:
             ),
             structured_output=True,
         )
+        breakpoint()
         assert isinstance(
             socialized_context, SocializedContextForModel
         ), "Socialized context is not a SocializedContext"

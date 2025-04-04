@@ -67,16 +67,16 @@ The UI expects data in the following JSON format:
     {
       "timestep": "1",
       "state": "Description of the current state",
-      "observations": [
-        "Agent1: observation",
-        "Agent2: observation",
-        "Agent3: observation"
-      ],
-      "actions": [
-        "Agent1: action",
-        "Agent2: action",
-        "Agent3: action"
-      ]
+      "observations": {
+        "Agent1": "observation",
+        "Agent2": "observation",
+        "Agent3": "observation"
+      },
+      "actions": {
+        "Agent1": "action",
+        "Agent2": "action",
+        "Agent3": "action"
+      }
     }
   ]
 }
