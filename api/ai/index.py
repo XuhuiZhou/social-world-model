@@ -151,8 +151,3 @@ async def get_simulation():
         return simulation
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-# For local development
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("index:app", host="0.0.0.0", port=8000, reload=True)
