@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import os
 import json
 from typing import Dict, List, Optional
@@ -15,6 +16,9 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="public"), name="static")
 
 # Mock SocialWorldModel for demonstration
 class MockSocialWorldModel:
