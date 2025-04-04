@@ -9,20 +9,22 @@ The project is organized into two main components:
 1. **Core Social World Model** - The main Python library for simulating social interactions
 2. **UI with Python API** - A Next.js frontend with integrated Python API using Vercel Functions
 
+All Vercel-related files are contained within the `ui` folder:
+
 ```
 social-world-model/
 ├── social_world_model/     # Core Python library
-├── ui/                     # UI with Python API
-│   ├── api/                # Python FastAPI application
-│   │   └── ai/             # Social World Model API endpoints
-│   ├── app/                # Next.js application
-│   │   └── api/            # Next.js API routes
-│   ├── public/             # Static files
-│   ├── vercel.json         # Vercel configuration
-│   ├── next.config.js      # Next.js configuration
-│   ├── package.json        # Node.js dependencies
-│   └── requirements.txt    # Python dependencies
-└── ...
+└── ui/                     # UI with Python API
+    ├── api/                # Python FastAPI application
+    │   └── ai/             # Social World Model API endpoints
+    ├── app/                # Next.js application
+    │   └── api/            # Next.js API routes
+    ├── public/             # Static files
+    ├── vercel.json         # Vercel configuration
+    ├── next.config.js      # Next.js configuration
+    ├── package.json        # Node.js dependencies
+    ├── .env                # Environment variables
+    └── requirements.txt    # Python dependencies
 ```
 
 ## Implementation Details
