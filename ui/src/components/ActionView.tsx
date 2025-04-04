@@ -25,16 +25,14 @@ const ActionView: React.FC<ActionViewProps> = ({ data }) => {
   // Extract all actions and observations from the socialized context
   const actions: Action[] = [];
   socialized_context.forEach(context => {
-    context.actions.forEach((action, index) => {
-      const agent = agents_names[index];
-      if (!action.includes('none')) {
-        // Extract the action content (everything after the agent name and colon)
-        const content = action.replace(`${agent}: `, '').trim();
+    agents_names.forEach(agent => {
+      const action = context.actions[agent];
+      if (action !== 'none') {
         // Get the corresponding observation for this agent
-        const observation = context.observations[index].replace(`${agent}: `, '').trim();
+        const observation = context.observations[agent];
         actions.push({
           agent,
-          content,
+          content: action,
           timestep: context.timestep,
           observation: observation === '[SAME AS STATE]' ? context.state : observation,
           state: context.state
@@ -145,14 +143,13 @@ const ActionView: React.FC<ActionViewProps> = ({ data }) => {
                   )}
                   {showAll ? (
                     // Show all observations for all agents at this timestep
-                    socialized_context
+                    Object.entries(socialized_context
                       .find(ctx => ctx.timestep === action.timestep)
-                      ?.observations.map((obs, idx) => {
-                        const obsAgent = agents_names[idx];
-                        const obsContent = obs.replace(`${obsAgent}: `, '').trim();
+                      ?.observations || {})
+                      .map(([obsAgent, obsContent]) => {
                         if (obsContent === 'none') return null;
                         return (
-                          <div key={idx} className={`text-gray-700 ${getAgentColorClass(obsAgent, 'light')} p-3 rounded-md border border-gray-200`}>
+                          <div key={obsAgent} className={`text-gray-700 ${getAgentColorClass(obsAgent, 'light')} p-3 rounded-md border border-gray-200`}>
                             <span className="font-medium text-gray-600">{obsAgent}'s Observation: </span>
                             {obsContent === '[SAME AS STATE]' ? action.state : obsContent}
                           </div>

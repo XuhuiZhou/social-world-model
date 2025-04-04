@@ -14,7 +14,8 @@ const AgentPresence: React.FC<AgentPresenceProps> = ({ data }) => {
   const isAgentPresent = (agentIndex: number, timestep: string) => {
     const context = socialized_context.find(c => c.timestep === timestep);
     if (!context) return false;
-    return !context.observations[agentIndex].includes('none');
+    const agentName = agents_names[agentIndex];
+    return context.observations[agentName] !== 'none';
   };
 
   // Generate colors for agents

@@ -31,11 +31,29 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
 
       // Validate each context item
       parsedData.socialized_context.forEach((context, index) => {
-        if (!context.timestep || !context.state ||
-            !Array.isArray(context.observations) ||
-            !Array.isArray(context.actions)) {
-          throw new Error(`Invalid context at index ${index}`);
+        if (!context.timestep || !context.state) {
+          throw new Error(`Invalid context at index ${index}: missing timestep or state`);
         }
+        
+        // Check if observations is an object
+        if (!(typeof context.observations === 'object' && context.observations !== null)) {
+          throw new Error(`Invalid context at index ${index}: observations must be an object`);
+        }
+        
+        // Check if actions is an object
+        if (!(typeof context.actions === 'object' && context.actions !== null)) {
+          throw new Error(`Invalid context at index ${index}: actions must be an object`);
+        }
+
+        // Validate that all agents have entries in observations and actions
+        parsedData.agents_names.forEach(agent => {
+          if (!(agent in context.observations)) {
+            throw new Error(`Invalid context at index ${index}: missing observation for agent ${agent}`);
+          }
+          if (!(agent in context.actions)) {
+            throw new Error(`Invalid context at index ${index}: missing action for agent ${agent}`);
+          }
+        });
       });
 
       onDataSubmit(parsedData);
@@ -64,8 +82,8 @@ export default function JsonInputModal({ isOpen, onClose, onDataSubmit }: JsonIn
     {
       "timestep": "t1",
       "state": "state description",
-      "observations": ["obs1", "obs2"],
-      "actions": ["action1", "action2"]
+      "observations": {"agent1": "obs1", "agent2": "obs2"},
+      "actions": {"agent1": "action1", "agent2": "action2"}
     }
   ]
 }`}
