@@ -1,31 +1,26 @@
 # Social World Model with Vercel Python Functions
 
-This branch adds Vercel Functions support to the Social World Model project, allowing you to deploy the SocialWorldModel class as a serverless API.
+This integration adds Vercel Functions support to the Social World Model project, allowing you to deploy the SocialWorldModel class as a serverless API.
 
 ## Project Structure
 
-The project is organized into two main components:
-
-1. **Core Social World Model** - The main Python library for simulating social interactions
-2. **UI with Python API** - A Next.js frontend with integrated Python API using Vercel Functions
-
-All Vercel-related files are contained within the `ui` folder:
+The UI component is organized as follows:
 
 ```
-social-world-model/
-├── social_world_model/     # Core Python library
-└── ui/                     # UI with Python API
-    ├── api/                # Python FastAPI application
-    │   └── ai/             # Social World Model API endpoints
-    ├── app/                # Next.js application
-    │   └── api/            # Next.js API routes
-    ├── public/             # Static files
-    ├── vercel.json         # Vercel configuration
-    ├── next.config.js      # Next.js configuration
-    ├── package.json        # Node.js dependencies
-    ├── .env                # Environment variables
-    └── requirements.txt    # Python dependencies
+ui/
+├── api/                # Python FastAPI application
+│   └── ai/             # Social World Model API endpoints
+├── app/                # Next.js application
+│   └── api/            # Next.js API routes
+├── public/             # Static files
+├── vercel.json         # Vercel configuration
+├── next.config.js      # Next.js configuration
+├── package.json        # Node.js dependencies
+├── .env                # Environment variables
+└── requirements.txt    # Python dependencies
 ```
+
+This structure follows the Vercel Python Functions integration pattern, where Python API endpoints are kept separate from the Next.js application.
 
 ## Implementation Details
 
