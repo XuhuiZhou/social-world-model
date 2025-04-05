@@ -17,7 +17,6 @@ class ObsDistribution(BaseModel):
         description="The list of observations with a list of agents that perceive the observation"
     )
 
-
 class FormattedQuestion(BaseModel):
     agent_name: str = Field(
         description="The name of the agent that the question should be directed to"
@@ -470,5 +469,5 @@ class SocialWorldModel:
         template = (
             "Please analyze the current context and roll out the future socialized context from the following context (please be creative about the future roll out):\n{context}\n\n"
         )
-        socialized_context = await self.socialize_context(context=processed_context, critic_and_improve=True, template=template)
+        socialized_context = await self.socialize_context(context=processed_context, critic_and_improve=False, template=template)
         return socialized_context
