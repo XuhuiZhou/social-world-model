@@ -12,10 +12,12 @@ from sotopia.generation_utils import agenerate
 from social_world_model.engine import dictlize, GENERAL_GUIDELINES
 import json
 
+
 class ObsDistribution(BaseModel):
     agents_per_observation: List[Tuple[str, List[str]]] = Field(
         description="The list of observations with a list of agents that perceive the observation"
     )
+
 
 class FormattedQuestion(BaseModel):
     agent_name: str = Field(
@@ -294,7 +296,12 @@ class SocialWorldModel:
         return reasoning, answer
 
     async def socialize_context(
-        self, context: str, example_analysis: str = "", feedback: str = "", critic_and_improve: bool = False, template: str = ""
+        self,
+        context: str,
+        example_analysis: str = "",
+        feedback: str = "",
+        critic_and_improve: bool = False,
+        template: str = "",
     ) -> SocializedContext:
         """
         Analyzes and socializes context for the simulation.
@@ -453,8 +460,10 @@ class SocialWorldModel:
                 False,
                 f"Previous attempt: {socialized_context}\n\nFeedback: {evaluation}",
             )
-    
-    async def simulate_socialized_context(self, context: str, socialized_context: SocializedContext|None = None) -> SocializedContext:
+
+    async def simulate_socialized_context(
+        self, context: str, socialized_context: SocializedContext | None = None
+    ) -> SocializedContext:
         """
         Simulates the socialized context from the given context.
 
@@ -466,8 +475,8 @@ class SocialWorldModel:
             processed_context = f"### Original Context:\n{context}\n\n{socialized_context.to_natural_language()}\n\n"
         else:
             processed_context = f"### Original Context:\n{context}\n\n"
-        template = (
-            "Please analyze the current context and roll out the future socialized context from the following context (please be creative about the future roll out):\n{context}\n\n"
+        template = "Please analyze the current context and roll out the future socialized context from the following context (please be creative about the future roll out):\n{context}\n\n"
+        socialized_context = await self.socialize_context(
+            context=processed_context, critic_and_improve=False, template=template
         )
-        socialized_context = await self.socialize_context(context=processed_context, critic_and_improve=False, template=template)
         return socialized_context

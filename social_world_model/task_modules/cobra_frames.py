@@ -1,6 +1,5 @@
 from typing import Any, Optional
 from social_world_model.social_world_model import SocialWorldModel
-from social_world_model.database import SocializedContext
 
 COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT = """"""
 
@@ -36,15 +35,17 @@ def create_cobra_frames_result(
     return result
 
 
-def prepare_cobra_frames_vanilla(row: dict[str, Any], pure_context: bool = False) -> tuple[str, dict[str, Any]]:
+def prepare_cobra_frames_vanilla(
+    row: dict[str, Any], pure_context: bool = False
+) -> tuple[str, dict[str, Any]]:
     context = row.get("context", "")
     extra_info = row.get("extra_info", "")
-    
+
     if extra_info:
         if pure_context:
             context = extra_info
             extra_info = ""
-    
+
     template = """
 ## Context
 {context}
@@ -63,7 +64,7 @@ Format your response with:
         "context": context,
         "extra_info": extra_info,
     }
-    
+
     return template, input_values
 
 

@@ -16,6 +16,7 @@ If none of the agents observe anything in a specific time step (except step 0), 
 If any agent has actions in the last timestep, then the socialized context could be potentially problematic (as the last timestep should be only about the observation of the last actions)
 """
 
+
 def load_existing_socialized_contexts(
     data_path: Path, identifier_key: str
 ) -> dict[str, SocializedContext]:

@@ -187,7 +187,7 @@ class ToMBenchmarkRunner:
         assert isinstance(
             engine, SocialWorldModel
         ), "Engine must be an instance of ToMEngine"
-        if benchmark_type in ['cobra_frames']:
+        if benchmark_type in ["cobra_frames"]:
             critic_and_improve = True
         else:
             critic_and_improve = False
