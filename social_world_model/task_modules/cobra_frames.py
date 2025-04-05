@@ -1,5 +1,6 @@
 from typing import Any, Optional
 from social_world_model.social_world_model import SocialWorldModel
+from social_world_model.database import SocializedContext
 
 COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT = """"""
 
@@ -14,9 +15,11 @@ def create_cobra_frames_result(
         "listener",
         "speaker",
         "statement",
+        "context",
         "offensive_allapp",
         "reasoning",
         "answer",
+        "socialized_context",
         "correct",
     ]
     parsed_result["offensive_allapp"] = row["offensive_allapp"]
@@ -33,7 +36,15 @@ def create_cobra_frames_result(
     return result
 
 
-def prepare_cobra_frames_vanilla(row: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+def prepare_cobra_frames_vanilla(row: dict[str, Any], pure_context: bool = False) -> tuple[str, dict[str, Any]]:
+    context = row.get("context", "")
+    extra_info = row.get("extra_info", "")
+    
+    if extra_info:
+        if pure_context:
+            context = extra_info
+            extra_info = ""
+    
     template = """
 ## Context
 {context}
@@ -48,7 +59,11 @@ Format your response with:
 1. Reasoning in <reasoning>...</reasoning> tags
 2. Final answer (0 for not offensive, 1 for offensive) in <answer>...</answer> tags
 """
-    input_values = {"context": row["context"], "extra_info": row["statement"]}
+    input_values = {
+        "context": context,
+        "extra_info": extra_info,
+    }
+    
     return template, input_values
 
 
@@ -75,7 +90,10 @@ def cobra_frames_evaluation_report(results: list[dict[str, Any]]) -> None:
 
 async def cobra_frames_simulation(
     row: dict[str, Any], engine: Optional[SocialWorldModel] = None
-) -> dict[str, Any]:
+) -> None:
     """Run simulation for COBRA frames task."""
     assert engine is not None, "Engine must be provided"
-    return row
+    socialized_context = await engine.simulate_socialized_context(
+        context=row["context"],
+    )
+    engine.existing_socialized_contexts[row["index"]] = socialized_context
