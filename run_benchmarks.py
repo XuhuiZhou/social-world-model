@@ -150,7 +150,7 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":  # confaide
             template, input_values = prepare_confaide_vanilla(row, pure_context)
         elif benchmark_type == "cobra_frames":
-            template, input_values = prepare_cobra_frames_vanilla(row)
+            template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         # Generate response
         response = await agenerate(
             model_name=self.model_name,
@@ -187,6 +187,10 @@ class ToMBenchmarkRunner:
         assert isinstance(
             engine, SocialWorldModel
         ), "Engine must be an instance of ToMEngine"
+        if benchmark_type in ["cobra_frames"]:
+            critic_and_improve = True
+        else:
+            critic_and_improve = False
 
         if benchmark_type == "tomi":
             context = " ".join(eval(row["story"]))
@@ -204,20 +208,19 @@ class ToMBenchmarkRunner:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
                 socialized_context = await engine.socialize_context(
-                    context, example_analysis
+                    context, example_analysis, critic_and_improve=critic_and_improve
                 )
-            engine.existing_socialized_contexts[row["set_id"]] = socialized_context
+                engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
             if row["index"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
                 socialized_context = await engine.socialize_context(
-                    context, example_analysis
+                    context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
         row["extra_info"] = socialized_context.to_natural_language()
-        breakpoint()
         result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
         return result
 
@@ -243,8 +246,12 @@ class ToMBenchmarkRunner:
             parsed_result = await confaide_simulation(row, engine)
             result = create_confaide_result(parsed_result, row)
         elif benchmark_type == "cobra_frames":
-            parsed_result = await cobra_frames_simulation(row, engine)
-            result = create_cobra_frames_result(parsed_result, row)
+            await cobra_frames_simulation(row, engine)
+            result = await self._run_socialized_context(
+                row,
+                benchmark_type,
+                engine=engine,
+            )
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:

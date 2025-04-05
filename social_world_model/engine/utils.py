@@ -4,6 +4,19 @@ import json
 from pathlib import Path
 
 
+GENERAL_GUIDELINES = """
+If all the agents observations are <same_as_state /> or <same_as_last_action_x /> (x is the index of the agent), then the socialized context could be potentially problematic.
+
+If all the agents show no <mental_state> </mental_state> tags, then the socialized context could be potentially problematic.
+
+If none of the agents act in a specific time step (except the last time step), then the socialized context could be potentially problematic.
+
+If none of the agents observe anything in a specific time step (except step 0), then the socialized context could be potentially problematic. (as the agent should be able to observe what they did in the last time step)
+
+If any agent has actions in the last timestep, then the socialized context could be potentially problematic (as the last timestep should be only about the observation of the last actions)
+"""
+
+
 def load_existing_socialized_contexts(
     data_path: Path, identifier_key: str
 ) -> dict[str, SocializedContext]:
