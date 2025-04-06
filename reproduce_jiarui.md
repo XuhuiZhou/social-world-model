@@ -21,4 +21,23 @@ uv run python run_benchmarks.py "hitom" --dataset-path="data/hitom_data/processe
 
 uv run python run_benchmarks.py "hitom" --dataset-path="data/hitom_data/processed_hitom_data.csv" --batch-size=100 --save --model-name="o1-2024-12-17" --mode="socialized_context" --continue-mode="continue" --example-analysis-file="data/social_contexts_example/hitom.json"
 
-## 
+## generate socialized context with updated code 20250403
+
+uv run python run_benchmarks.py "hitom" --dataset-path="data/hitom_data/processed_hitom_data.csv" --batch-size=100 --save --model-name="o1-2024-12-17" --mode="generate_socialized_context" --continue-mode="continue" --example-analysis-file="data/social_contexts_example/hitom.json"
+
+## simulation
+
+Run the errored examples only
+Run 20 simple examples
+Get the correctness
+
+
+uv run python run_benchmarks.py "hitom" --dataset-path="data/hitom_data/processed_hitom_data.csv" --batch-size=100 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"
+
+## generate socialized context with updated code 20250406
+
+uv run python run_benchmarks.py "hitom" --dataset-path="data/hitom_data/processed_hitom_data.csv" --batch-size=100 --save --model-name="o1-2024-12-17" --mode="generate_socialized_context" --continue-mode="continue" --example-analysis-file="data/social_contexts_example/hitom.json"
+
+## simulation 20250406
+
+uv run python run_benchmarks.py "hitom" --dataset-path="data/hitom_data/processed_hitom_data.csv" --batch-size=100 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"

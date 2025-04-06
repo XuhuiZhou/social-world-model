@@ -113,7 +113,20 @@ def get_question_agent_names(question: str) -> list[str]:
                 names.append(name_match.group())
         
         return names
-        
+
+def extract_integer(text):
+    match = re.search(r'\d+', text)
+    if match:
+        return match.group()
+    return "0"
+
+def process_timestep(timestep: str) -> str:
+    try:
+        int(timestep)
+        return str(timestep)
+    except ValueError:
+        extracted = extract_integer(timestep)
+        return str(extracted)
         
 async def hitom_simulation(row: dict[str, Any], engine: Optional[SocialWorldModel] = None) -> dict[str, Any]:
     """Run experiment in simulation mode (using ToM engine for memory tracking)."""
@@ -125,6 +138,12 @@ async def hitom_simulation(row: dict[str, Any], engine: Optional[SocialWorldMode
     # Extract character information from the question
     question = row['question']
     agent_names_in_question = get_question_agent_names(question)
+    
+    # Step 0: Make sure the timestep can be converted to integers
+    for event in socialized_events:
+        event.timestep = process_timestep(event.timestep)
+    
+    
     # Step 1: Infer whether the question is about an agent's belief
     if len(agent_names_in_question) == 0:
         prompt = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information."""
@@ -133,7 +152,6 @@ async def hitom_simulation(row: dict[str, Any], engine: Optional[SocialWorldMode
     engine.set_agent_prompt(
         prompt
     )
-    breakpoint()
     for idx, agent_name in enumerate(agent_names_in_question):
         if idx < len(agent_names_in_question) - 1:
             agent1, agent2 = agent_name, agent_names_in_question[idx + 1]
