@@ -366,6 +366,8 @@ def run_benchmark(
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
+        
+
         # Ensure index is string
         if "index" in data.columns:
             data["index"] = data["index"].astype(str)

@@ -5,6 +5,7 @@ from social_world_model.social_world_model import SocialWorldModel
 from social_world_model.database import SocializedContext
 import json
 from typing import Any, Optional
+from copy import deepcopy
 
 HITOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the HITOM scenarios. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. An agent tend to trust a agent that exited the room later than himself. The exit order is known to all agents. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
 
@@ -72,6 +73,8 @@ def create_hitom_result(
 ) -> dict[str, Any]:
     """Create ToMi result dictionary."""
     targeted_entries = ["set_id", "index", "deception", "story_length", "question_order", "story", "question", "reasoning", "answer", "correct_answer", "is_correct", "socialized_context", "extra_info", "choices"]
+    if not parsed_result:
+        return {}
     result = {}
     for entry in targeted_entries:
         if entry in parsed_result:
@@ -95,58 +98,88 @@ def hitom_evaluation_report(results: list[dict[str, Any]]) -> None:
         f"Current accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}"
     )
 
+def get_question_agent_names(question: str) -> list[str]:
+    if question.startswith("Where is"):
+        return []
+    else:
+        question = question.replace("Where does ", "")
+        
+        pattern = r'thinks?'
+        parts = re.split(pattern, question)
+        names = []
+        for part in parts:
+            name_match = re.search(r'[A-Z][a-z]+', part)
+            if name_match:
+                names.append(name_match.group())
+        
+        return names
+        
+        
 async def hitom_simulation(row: dict[str, Any], engine: Optional[SocialWorldModel] = None) -> dict[str, Any]:
-    # TODO
     """Run experiment in simulation mode (using ToM engine for memory tracking)."""
     assert engine is not None, "Engine must be provided"
     # Get the socialized context from the engine
-    socialized_context = engine.existing_socialized_contexts[str(row['set_id'])]
+    socialized_context = deepcopy(engine.existing_socialized_contexts[row['set_id']])
     agent_names = socialized_context.agents_names
+    socialized_events = socialized_context.socialized_context
     # Extract character information from the question
     question = row['question']
+    agent_names_in_question = get_question_agent_names(question)
+    # Step 1: Infer whether the question is about an agent's belief
+    if len(agent_names_in_question) == 0:
+        prompt = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information."""
+    else:
+        prompt = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) You witness everything and every movement before exiting a location. (2) You can infer another agent's mental state only if you and that agent have been in the same location, or have had private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. You are more likely to trust an agent who exited the room after you did. The exit order is known to all agents. (4) When you engage in private communication, you know others won't hear it, but you are aware that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information. Pay attention that the "observations" in the socialized contexts could be wrong, especially when the agent has left the location where the object is but the observation is still "<same_as_state />"."""
     engine.set_agent_prompt(
-        "You are trying to figure out a theory of mind question based on a conversation you participated in. "
-        "At the end of the conversation, you will be asked a question about the conversation. "
-        "You may or may not join the whole conversation as indicated in your memory shown below. "
-        f"Here's the full conversation for your reference: {row['context']} "
-        "You can compare your memory below with the full conversation above to help you better answer the question. "
-        "First reason about the question and then respond with the following format: "
-        "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
+        prompt
     )
-    all_reasoning = []
-    all_answers = []
-    # Initialize the simulation with the socialized context
+    breakpoint()
+    for idx, agent_name in enumerate(agent_names_in_question):
+        if idx < len(agent_names_in_question) - 1:
+            agent1, agent2 = agent_name, agent_names_in_question[idx + 1]
+            
+            imagined_socialized_events = []
+            for index, event in enumerate(socialized_events):
+                if event.observations[agent1] == "none":
+                    if index > 0:
+                        socialized_events[index - 1].actions[agent2] = "none"
+                else:
+                    imagined_socialized_events.append(event)
+            socialized_events = imagined_socialized_events
+    
+    socialized_context.socialized_context = socialized_events
     await engine.initialize_simulation_from_socialized_context(socialized_context)
     
-    for agent_name in agent_names:
-        reasoning, answer = await engine.reason_about_belief(
-            question, 
-            agent_names, 
-            target_agent=agent_name,
-        )
-        all_reasoning.append(f"{agent_name}'s reasoning: {reasoning}")
-        all_answers.append(f"{agent_name}'s answer: {answer}")
-
-    combined_reasoning = "\n\n".join(all_reasoning)
-    combined_answer = "\n\n".join(all_answers)
+    # what does A think <obj> is?
+    # what does A think B thinks <obj> is?
+    # reformat question to be second-person narrative
+    if len(agent_names_in_question) > 0:
+        question = question.replace(agent_names_in_question[0], "you")
+        question = question.replace("Where does", "where do")
     
-    # Create a summary of the reasoning process with agent attribution
-    reasoning = f"Based on individual questioning of each agent, the following agents indicated they know the answer to '{question}': None\n\n{combined_reasoning}"
-    answer = combined_answer
-    engine.simulation.reasoning = reasoning
-    engine.simulation.answer = answer
-    # Get the simulation state
+    question = question + "\n" + row["choices"]
+    
+    if len(agent_names_in_question) > 0:
+        reasoning, answer = await engine.reason_about_belief(
+            question,
+            agent_names,
+            target_agent=agent_names_in_question[0],
+        )
+    else:
+        return {}
+    
     simulation = engine.get_simulation()
     simulation_dict = simulation.dict()
-    # Prepare the result
     result = {
-       "extra_info": socialized_context.to_natural_language() + "\n\n" + f"### Reasoning and answers from each agent participating in the conversation:\n{combined_reasoning}\n\n{combined_answer}. They are simulated agents with partial memory of the whole conversation (induced from the socialized context above), so the answers are subjective and not always correct. Please use them as extra information to help you answer the question.",
-       "memory": simulation_dict["agent_memories"],
-       "agents": simulation_dict["agents"],
-       "socialized_context": socialized_context
+        "question": row["question"],
+        "reasoning": reasoning,
+        "answer": answer,
+        "correct_answer": row["correct_answer"],
+        "socialized_context": socialized_context,
+        "transformed_question": simulation_dict["question"],
+        "memory": simulation_dict["agent_memories"],
+        "agents": simulation_dict["agents"],
     }
-    row["extra_info"] = result["extra_info"]
-    row["memory"] = result["memory"]
-    row["agents"] = result["agents"]
-    row["socialized_context"] = result["socialized_context"]
+    row["socialized_context"] = socialized_context
+    row["extra_info"] = socialized_context.to_natural_language()
     return result
