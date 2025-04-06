@@ -1,0 +1,205 @@
+{
+  "agents_names": [
+    "Gianna",
+    "Sara",
+    "Javier"
+  ],
+  "socialized_context": [
+    {
+      "timestep": "1",
+      "state": "All three are engaged in sharing pet stories. Gianna is about to leave to change clothes.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "says she needs to leave for a meeting",
+        "Sara": "none",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "2",
+      "state": "Gianna is excusing herself and is leaving. Sara and Javier remain in the conversation.",
+      "observations": {
+        "Gianna": "none",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "says 'Sure thing, Gianna. Take care!'",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "3",
+      "state": "Gianna has left the conversation. Only Sara and Javier remain talking.",
+      "observations": {
+        "Gianna": "none",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "none",
+        "Javier": "says 'Catch you later, Gianna.'"
+      }
+    },
+    {
+      "timestep": "4",
+      "state": "Sara and Javier continue their conversation about pets, Gianna is away.",
+      "observations": {
+        "Gianna": "none",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "asks if Javier has tried training Bruno",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "5",
+      "state": "Sara asked Javier about training Bruno. Gianna is away.",
+      "observations": {
+        "Gianna": "none",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "none",
+        "Javier": "replies about training Bruno and asks about Snowflake"
+      }
+    },
+    {
+      "timestep": "6",
+      "state": "Javier replied about training Bruno and asked Sara about Snowflake. Gianna is away.",
+      "observations": {
+        "Gianna": "none",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "talks about training Snowflake",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "7",
+      "state": "Sara and Javier are discussing pet training. Gianna returns to the conversation.",
+      "observations": {
+        "Gianna": "sees Sara and Javier talking about pet training",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "greets them and mentions how training strengthens the bond with pets",
+        "Sara": "none",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "8",
+      "state": "Gianna has returned and mentioned the bond-building through training.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "affirms the trust aspect of pet training",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "9",
+      "state": "Sara agreed about the trust aspect of pet training. Gianna is present.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "none",
+        "Javier": "expresses how Bruno's training built love and responsibility"
+      }
+    },
+    {
+      "timestep": "10",
+      "state": "Javier just shared about Bruno's love and trust. The conversation continues about how pets build bonds.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "shares about Chirpy imitating her and helping with studying",
+        "Sara": "none",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "11",
+      "state": "Gianna just shared about Chirpy's imitation and how it helped. The conversation continues.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "none",
+        "Javier": "calls pets lifesavers"
+      }
+    },
+    {
+      "timestep": "12",
+      "state": "Javier just said pets are indeed lifesavers. The conversation continues.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "shares how pets bring joy, mentions kitten stuck in vase story",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "13",
+      "state": "Sara just recounted a comedic memory with a kitten stuck in a vase. The conversation continues.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "expresses how amazing they all are and cherishes the memories",
+        "Sara": "none",
+        "Javier": "none"
+      }
+    },
+    {
+      "timestep": "14",
+      "state": "The conversation has concluded.",
+      "observations": {
+        "Gianna": "[SAME AS STATE]",
+        "Sara": "[SAME AS STATE]",
+        "Javier": "[SAME AS STATE]"
+      },
+      "actions": {
+        "Gianna": "none",
+        "Sara": "none",
+        "Javier": "none"
+      }
+    }
+  ]
+}

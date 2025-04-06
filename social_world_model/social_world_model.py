@@ -9,7 +9,7 @@ from social_world_model.database import (
     SocializedStructure,
 )
 from sotopia.generation_utils import agenerate
-from social_world_model.engine import dictlize
+from social_world_model.engine import dictlize, GENERAL_GUIDELINES
 import json
 
 
@@ -296,7 +296,12 @@ class SocialWorldModel:
         return reasoning, answer
 
     async def socialize_context(
-        self, context: str, example_analysis: str = "", feedback: str = ""
+        self,
+        context: str,
+        example_analysis: str = "",
+        feedback: str = "",
+        critic_and_improve: bool = False,
+        template: str = "",
     ) -> SocializedContext:
         """
         Analyzes and socializes context for the simulation.
@@ -311,9 +316,10 @@ class SocialWorldModel:
         Returns:
             SocializedContext object containing the analyzed context
         """
-        template = (
-            "Please analyze the following narrative.\n\n" "Context: {context}\n\n"
-        )
+        if not template:
+            template = (
+                "Please analyze the following narrative.\n\n" "Context: {context}\n\n"
+            )
 
         input_values = {"context": context}
 
@@ -348,6 +354,12 @@ class SocialWorldModel:
         socialized_context_processed = SocializedContext(
             **socialized_context_dict, context_manual=context_manual
         )
+        if critic_and_improve:
+            socialized_context_processed = await self.critique_and_improve_context(
+                socialized_context=socialized_context_processed,
+                context=context,
+                max_attempts=3,
+            )
         return socialized_context_processed
 
     async def critique_and_improve_context(
@@ -401,7 +413,7 @@ class SocialWorldModel:
         return current_context
 
     async def critic_socialize_context(
-        self, socialized_context: str, example_patterns: str
+        self, socialized_context: str, example_patterns: str = ""
     ) -> Tuple[bool, str]:
         """
         Evaluates whether the socialized context is good enough based on provided patterns.
@@ -421,11 +433,12 @@ class SocialWorldModel:
         template = (
             "You are a critical evaluator of socialized context for simulations.\n\n"
             "Please evaluate the following socialized context:\n{socialized_context}\n\n"
+            "Here are some general guidelines for good socialized context:\n{GENERAL_GUIDELINES}\n\n"
             "Task specific requirements and example errors patterns/criteria for bad socialized context:\n{example_patterns}\n\n"
             "The expected format for a good SocializedContext is:\n{format_instructions}\n\n"
             "Evaluate if this socialized context is good enough for simulation. Consider:\n"
-            "If the context is good enough, respond with 'yes'.\n"
-            "If the context is not good enough, provide specific feedback on what needs to be improved."
+            "If the context is good enough, respond with 'yes', following with the reasoning of the judgement.\n"
+            "If the context is not good enough, respond with 'no', following with the reasoning of the judgement and provide specific feedback on what needs to be improved."
         )
 
         evaluation = await agenerate(
@@ -433,6 +446,7 @@ class SocialWorldModel:
             template=template,
             input_values={
                 "socialized_context": socialized_context,
+                "GENERAL_GUIDELINES": GENERAL_GUIDELINES,
                 "example_patterns": example_patterns,
                 "format_instructions": format_instructions,
             },
@@ -446,3 +460,28 @@ class SocialWorldModel:
                 False,
                 f"Previous attempt: {socialized_context}\n\nFeedback: {evaluation}",
             )
+
+    async def simulate_socialized_context(
+        self,
+        context: str,
+        socialized_context: SocializedContext | None = None,
+        critic_and_improve: bool = False,
+    ) -> SocializedContext:
+        """
+        Simulates the socialized context from the given context.
+
+        Args:
+            context: The original context to simulate from
+            socialized_context: The socialized context to simulate from
+        """
+        if socialized_context:
+            processed_context = f"### Original Context:\n{context}\n\n{socialized_context.to_natural_language()}\n\n"
+        else:
+            processed_context = f"### Original Context:\n{context}\n\n"
+        template = "Please analyze the current context and roll out the future socialized context from the following context (please be creative about the future roll out):\n{context}\n\n"
+        socialized_context = await self.socialize_context(
+            context=processed_context,
+            critic_and_improve=critic_and_improve,
+            template=template,
+        )
+        return socialized_context

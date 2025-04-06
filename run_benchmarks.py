@@ -34,6 +34,11 @@ from social_world_model.task_modules import (
     CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
     reformat_hitom_data,
+    COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
+    cobra_frames_simulation,
+    prepare_cobra_frames_vanilla,
+    create_cobra_frames_result,
+    cobra_frames_evaluation_report,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -52,12 +57,13 @@ app = typer.Typer(pretty_exceptions_enable=False)
 # Create type aliases using the constants
 ModeType = Literal["vanilla", "socialized_context", "pure_context", "simulation", "generate_socialized_context"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "hitom"]
+BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 
@@ -148,6 +154,8 @@ class ToMBenchmarkRunner:
             template, input_values = prepare_fantom_vanilla(row, pure_context)
         elif benchmark_type == "confaide":  # confaide
             template, input_values = prepare_confaide_vanilla(row, pure_context)
+        elif benchmark_type == "cobra_frames":
+            template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "hitom":
             template, input_values = prepare_hitom_vanilla(row, pure_context)
         # Generate response
@@ -169,6 +177,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":
             parsed_result = self._parse_response(response, row)
             result = create_confaide_result(parsed_result, row)
+        elif benchmark_type == "cobra_frames":
+            parsed_result = self._parse_response(response, row)
+            result = create_cobra_frames_result(parsed_result, row)
         elif benchmark_type == "hitom":
             parsed_result = self._parse_response(response, row)
             result = create_hitom_result(parsed_result, row)
@@ -183,6 +194,13 @@ class ToMBenchmarkRunner:
         engine: Optional[SocialWorldModel] = None,
     ) -> dict[str, Any]:
         """Run experiment in socialized_context mode (using ToM engine for memory tracking)."""
+        assert isinstance(
+            engine, SocialWorldModel
+        ), "Engine must be an instance of ToMEngine"
+        if benchmark_type in ["cobra_frames"]:
+            critic_and_improve = True
+        else:
+            critic_and_improve = False
         assert isinstance(engine, SocialWorldModel), "Engine must be an instance of ToMEngine"
 
         if benchmark_type == "tomi":
@@ -196,6 +214,7 @@ class ToMBenchmarkRunner:
         )
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
+            example_analysis = str(example_analysis)
         else:
             example_analysis = ""
         if (
@@ -205,7 +224,7 @@ class ToMBenchmarkRunner:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
                 socialized_context = await engine.socialize_context(
-                    context, example_analysis
+                    context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
@@ -213,7 +232,7 @@ class ToMBenchmarkRunner:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
                 socialized_context = await engine.socialize_context(
-                    context, example_analysis
+                    context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
@@ -240,6 +259,13 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":
             parsed_result = await confaide_simulation(row, engine)
             result = create_confaide_result(parsed_result, row)
+        elif benchmark_type == "cobra_frames":
+            await cobra_frames_simulation(row, engine)
+            result = await self._run_socialized_context(
+                row,
+                benchmark_type,
+                engine=engine,
+            )
         elif benchmark_type == "hitom":
             parsed_result = await hitom_simulation(row, engine)
             result = create_hitom_result(parsed_result, row)
@@ -333,12 +359,18 @@ def run_benchmark(
             "tomi": "./data/rephrased_tomi_test_600.csv",
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
+            "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
+        # Ensure index is string
+        if "index" in data.columns:
+            data["index"] = data["index"].astype(str)
+        if "set_id" in data.columns:
+            data["set_id"] = data["set_id"].astype(str)
     except Exception as e:
         # Load jsonl file for fantom and confaide datasets
         if dataset_path.endswith('.jsonl'):
@@ -352,7 +384,9 @@ def run_benchmark(
                         # For confaide, we assume the data is already flattened
                         data_list.append(entry)
             data = pd.DataFrame(data_list)
-            data['index'] = range(len(data))
+            data["index"] = [str(i) for i in range(len(data))]
+            if "set_id" in data.columns:
+                data["set_id"] = data["set_id"].astype(str)
         elif dataset_path.endswith('.json'):
             with open(dataset_path, 'r') as f:
                 data_list = json.load(f)
@@ -364,7 +398,6 @@ def run_benchmark(
         if benchmark_type in ["fantom", "confaide", "hitom"]:
             data = data.groupby("set_id").head(1).reset_index(drop=True)
             mode = "socialized_context"
-
     asyncio.run(
         _run_benchmark(
             benchmark_type=benchmark_type,
@@ -440,6 +473,9 @@ async def _run_benchmark(
         fantom_evaluation_report(all_results)
     elif benchmark_type == "confaide":
         confaide_evaluation_report(all_results)
+    elif benchmark_type == "cobra_frames":
+        cobra_frames_evaluation_report(all_results)
+
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
 
