@@ -27,9 +27,11 @@ def load_existing_socialized_contexts(
             socialized_context_dict = simulation_dict["socialized_context"]
             try:
                 socialized_context = SocializedContext(**socialized_context_dict)
-            except Exception as e:
+            except Exception:
                 socialized_context_dict = dictlize(socialized_context_dict)
-                socialized_context_dict["task_specific_instructions"] = "You are dissecting the TOMI scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."
+                socialized_context_dict["task_specific_instructions"] = (
+                    "You are dissecting the TOMI scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."
+                )
                 socialized_context = SocializedContext(**socialized_context_dict)
             if identifier_key:
                 existing_socialized_contexts[simulation_dict[identifier_key]] = (
@@ -55,7 +57,7 @@ def dictlize(d: SocializedContextForModel | dict[str, Any]) -> dict[str, Any]:
     else:
         socialized_events = d["socialized_context"]
         agents_names = d["agents_names"]
-    
+
     for event in socialized_events:
         for key, value in event.items():
             if key in ["observations", "actions"] and isinstance(value, list):

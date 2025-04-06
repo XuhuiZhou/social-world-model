@@ -462,7 +462,10 @@ class SocialWorldModel:
             )
 
     async def simulate_socialized_context(
-        self, context: str, socialized_context: SocializedContext | None = None, critic_and_improve: bool = False
+        self,
+        context: str,
+        socialized_context: SocializedContext | None = None,
+        critic_and_improve: bool = False,
     ) -> SocializedContext:
         """
         Simulates the socialized context from the given context.
@@ -477,6 +480,8 @@ class SocialWorldModel:
             processed_context = f"### Original Context:\n{context}\n\n"
         template = "Please analyze the current context and roll out the future socialized context from the following context (please be creative about the future roll out):\n{context}\n\n"
         socialized_context = await self.socialize_context(
-            context=processed_context, critic_and_improve=critic_and_improve, template=template
+            context=processed_context,
+            critic_and_improve=critic_and_improve,
+            template=template,
         )
         return socialized_context
