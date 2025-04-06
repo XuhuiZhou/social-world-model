@@ -7,7 +7,7 @@ import json
 from typing import Any, Optional
 from copy import deepcopy
 
-HITOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the HITOM scenarios. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. An agent tend to trust a agent that exited the room later than himself. The exit order is known to all agents. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
+HITOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the HITOM scenarios. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
 
 def reformat_hitom_data(data_list: dict[str, Any]):
     # sample_id -> index
@@ -31,7 +31,7 @@ def prepare_hitom_vanilla(row: dict[str, Any], pure_context: bool = False) -> tu
             story = story + "\n" + extra_info
 
     question = row["question"] + "\n" + row["choices"]
-    template = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. An agent tend to trust a agent that exited the room later than himself. The exit order is known to all agents. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information.
+    template = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information.
 
 Below is the story and question:
 ## Story
@@ -129,7 +129,7 @@ async def hitom_simulation(row: dict[str, Any], engine: Optional[SocialWorldMode
     if len(agent_names_in_question) == 0:
         prompt = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information."""
     else:
-        prompt = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) You witness everything and every movement before exiting a location. (2) You can infer another agent's mental state only if you and that agent have been in the same location, or have had private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. You are more likely to trust an agent who exited the room after you did. The exit order is known to all agents. (4) When you engage in private communication, you know others won't hear it, but you are aware that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information. Pay attention that the "observations" in the socialized contexts could be wrong, especially when the agent has left the location where the object is but the observation is still "<same_as_state />"."""
+        prompt = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) You witness everything and every movement before exiting a location. (2) You can infer another agent's mental state only if you and that agent have been in the same location, or have had private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. (4) When you engage in private communication, you know others won't hear it, but you are aware that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information. Note that observations in social contexts may be inaccurate, particularly when an agent has already left the location of an object, yet the observation remains as <same_as_state />."""
     engine.set_agent_prompt(
         prompt
     )
@@ -153,9 +153,9 @@ async def hitom_simulation(row: dict[str, Any], engine: Optional[SocialWorldMode
     # what does A think <obj> is?
     # what does A think B thinks <obj> is?
     # reformat question to be second-person narrative
-    if len(agent_names_in_question) > 0:
-        question = question.replace(agent_names_in_question[0], "you")
-        question = question.replace("Where does", "where do")
+    # if len(agent_names_in_question) > 0:
+    #     question = question.replace(agent_names_in_question[0], "you")
+    #     question = question.replace("Where does", "where do")
     
     question = question + "\n" + row["choices"]
     
