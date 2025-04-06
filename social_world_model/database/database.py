@@ -1,5 +1,6 @@
 from pydantic import Field, BaseModel
 from sotopia.messages import ActionType
+from typing import Any
 
 
 class SocializedStructureForModel(BaseModel):
@@ -18,10 +19,10 @@ class SocializedStructureForModel(BaseModel):
 
 
 class SocializedStructure(BaseModel):
-    timestep: str
-    state: str
-    observations: dict[str, str]
-    actions: dict[str, str]
+    timestep: str = Field(description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state.")
+    state: str = Field(description="The current state of the world (including all the agents) at this timestep. Important note: this is the state before the action is taken (e.g., the initial state could be 'none' at the beginning if there are no prior contexts before the interaction starts).")
+    observations: dict[str, str] = Field(description="The observations for each agent in the social world at this timestep. Note that the different agents may have different observations.  1. The special tag '<same_as_state />' indicates the observation covers the current state. 2. The special tag '<same_as_last_action_x />' indicates the observation covers the last timestep agents' actions, x means the index of the agents. If no x provided, it means the observation covers the last timestep agents' actions. 3. The special tag '<mental_state>...</mental_state>' indicates the mental state of the agent. 4. 'none' means the agent does not observe anything at this timestep. Important note: this is the observation before the action is taken (e.g., the observation could be 'none' at the beginning if there are no prior contexts before the interaction starts).")
+    actions: dict[str, str] = Field(description="The actions for each agent in the social world at this timestep. 'none' represents that the agent does not take any action at this timestep.")
 
     def to_natural_language(self, timestep: int) -> str:
         return (
@@ -42,16 +43,31 @@ class SocializedContextForModel(BaseModel):
         description="A list of SocializedStructureForModel objects, each representing a timestep of the social world. At the last timestep, all agents' actions should be 'none' as they have already completed the interaction."
     )
 
-
 class SocializedContext(BaseModel):
-    agents_names: list[str]
-    socialized_context: list[SocializedStructure]
+    agents_names: list[str] = Field(description="The names of the agents")
+    socialized_context: list[SocializedStructure] = Field(description="A list of SocializedStructure objects, each representing a timestep of the social world.")
     context_manual: str = Field(
         description="The manual of how to interpret the socialized context, it should come from the prompt of generating the socialized context."
     )
 
+    def __init__(self, **data: Any) -> None:
+        # Add timesteps if not present
+        if "socialized_context" in data:
+            for i, structure in enumerate(data["socialized_context"]):
+                if "timestep" not in structure:
+                    structure["timestep"] = str(i)
+        
+        # Add context manual if not present
+        if "context_manual" not in data:
+            import json
+            data["context_manual"] = f"#### Context Manual\nHere's how to interpret the above socialized context (i.e., the json schema): \n{json.dumps(SocializedContext.model_json_schema(), indent=2)}\n#### Here's the context specific instuctions when generating the socialized context (should help you better understand the socialized context):\n{data.get('task_specific_instructions', '')}"
+        
+        super().__init__(**data)
+
     def to_natural_language(self) -> str:
-        return "### Socialized Context\n" + self.model_dump_json(indent=2)
+        context_manual = self.context_manual
+
+        return "### Socialized Context (the analysis of the original context)\n" + self.model_dump_json(indent=2, exclude={"context_manual"}) + "\n\n" + context_manual
 
 
 class Observation(BaseModel):

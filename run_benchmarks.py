@@ -199,6 +199,7 @@ class ToMBenchmarkRunner:
         engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
+            example_analysis = str(example_analysis)
         else:
             example_analysis = ""
         if (
@@ -343,6 +344,11 @@ def run_benchmark(
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
+        # Ensure index is string
+        if "index" in data.columns:
+            data["index"] = data["index"].astype(str)
+        if "set_id" in data.columns:
+            data["set_id"] = data["set_id"].astype(str)
     except Exception as e:
         # Load jsonl file for fantom and confaide datasets
         if dataset_path.endswith(".jsonl"):
@@ -356,7 +362,9 @@ def run_benchmark(
                         # For confaide, we assume the data is already flattened
                         data_list.append(entry)
             data = pd.DataFrame(data_list)
-            data["index"] = range(len(data))
+            data["index"] = [str(i) for i in range(len(data))]
+            if "set_id" in data.columns:
+                data["set_id"] = data["set_id"].astype(str)
         else:
             raise ValueError(f"Data set in a different format: {e}")
     if mode == "generate_socialized_context":
