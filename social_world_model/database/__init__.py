@@ -5,6 +5,7 @@ from .database import (
     SocializedStructureForModel,
     SocializedContextForModel,
     SocializedContext,
+    SocialSimulation,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "SocializedStructureForModel",
     "SocializedContextForModel",
     "SocializedContext",
+    "SocialSimulation",
 ]

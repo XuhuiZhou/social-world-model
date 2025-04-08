@@ -1,8 +1,9 @@
 from typing import Any, Optional
 from social_world_model.social_world_model import SocialWorldModel
+from social_world_model.database import SocialSimulation
 
-COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT = """"""
-
+COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT = """IMPORTANT: The statement should be the first action of the speaker. And agents would be able to observe that before the action. Try to use <mental_state>...</mental_state> tags to describe the mental state of each agent.
+"""
 
 def create_cobra_frames_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
@@ -55,7 +56,8 @@ def prepare_cobra_frames_vanilla(
 {extra_info}
 
 ## Task
-Analyze whether the statement is offensive in this context
+Analyze whether the statement is offensive in this context.
+Don't just focus on literal meaning of the statement, and use the simulations in the Extra Info for your analysis.
 Format your response with:
 1. Reasoning in <reasoning>...</reasoning> tags
 2. Final answer (0 for not offensive, 1 for offensive) in <answer>...</answer> tags
@@ -90,11 +92,20 @@ def cobra_frames_evaluation_report(results: list[dict[str, Any]]) -> None:
 
 
 async def cobra_frames_simulation(
-    row: dict[str, Any], engine: Optional[SocialWorldModel] = None
+    row: dict[str, Any], engine: Optional[SocialWorldModel] = None, num_simulations: int = 2
 ) -> None:
     """Run simulation for COBRA frames task."""
     assert engine is not None, "Engine must be provided"
-    socialized_context = await engine.simulate_socialized_context(
-        context=row["context"],
-    )
-    engine.existing_socialized_contexts[row["index"]] = socialized_context
+    social_simulation = SocialSimulation(simulations=[])
+    if row["index"] in engine.existing_social_simulations and len(engine.existing_social_simulations[row["index"]].simulations) >= num_simulations:
+        social_simulation = engine.existing_social_simulations[row["index"]]
+    else:
+        social_simulation = SocialSimulation(simulations=[])
+        for _ in range(num_simulations):
+            social_simulation = await engine.simulate_socialized_context(
+                context=row["context"],
+                social_simulation=social_simulation,
+            )
+    engine.existing_social_simulations[row["index"]] = social_simulation
+    row["socialized_context"] = social_simulation
+    row["extra_info"] = social_simulation.to_natural_language()

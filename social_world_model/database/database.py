@@ -73,7 +73,7 @@ class SocializedContext(BaseModel):
             import json
 
             data["context_manual"] = (
-                f"#### Context Manual\nHere's how to interpret the above socialized context (i.e., the json schema): \n{json.dumps(SocializedContext.model_json_schema(), indent=2)}\n#### Here's the context specific instuctions when generating the socialized context (should help you better understand the socialized context):\n{data.get('task_specific_instructions', '')}"
+                f"#### Context Manual\nHere's how to interpret the above socialized context (i.e., the json schema): \n{json.dumps(SocializedContext.model_json_schema(), indent=2)}\n#### Here's the context specific instuctions when generating the socialized context (should help you better understand the socialized context):\n{data.get('task_specific_instructions', 'no specific instructions when generating the socialized context')}"
             )
 
         super().__init__(**data)
@@ -84,6 +84,25 @@ class SocializedContext(BaseModel):
         return (
             "### Socialized Context (the analysis of the original context)\n"
             + self.model_dump_json(indent=2, exclude={"context_manual"})
+            + "\n\n"
+            + context_manual
+        )
+
+
+class SocialSimulation(BaseModel):
+    simulations: list[SocializedContext] = Field(description="A list of SocializedContext objects, each representing a simulation of the social world.")
+
+    def to_natural_language(self) -> str:
+        context_manual = self.simulations[0].context_manual # TODO: Assume all the simulations have the same context manual
+        return (
+            "### Social Simulation (the simulations based on the original context)\n\n"
+            + "\n\n".join(
+                [
+                    f"#### Possible Social Simulation {index}:\n"
+                    + simulation.model_dump_json(indent=2, exclude={"context_manual"})
+                    for index, simulation in enumerate(self.simulations)
+                ]
+            )
             + "\n\n"
             + context_manual
         )

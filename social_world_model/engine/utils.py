@@ -1,5 +1,5 @@
 from typing import Any
-from social_world_model.database import SocializedContextForModel, SocializedContext
+from social_world_model.database import SocializedContextForModel, SocializedContext, SocialSimulation
 import json
 from pathlib import Path
 
@@ -19,27 +19,46 @@ If any agent has actions in the last timestep, then the socialized context could
 
 def load_existing_socialized_contexts(
     data_path: Path, identifier_key: str
-) -> dict[str, SocializedContext]:
-    existing_socialized_contexts = {}
+) -> tuple[dict[str, SocializedContext], dict[str, SocialSimulation]]:
+    existing_socialized_contexts: dict[str, SocializedContext] = {}
+    existing_social_simulations: dict[str, SocialSimulation] = {}
     for file in data_path.glob("*.json"):
         with open(file, "r") as f:
             simulation_dict = json.load(f)
-            socialized_context_dict = simulation_dict["socialized_context"]
-            try:
-                socialized_context = SocializedContext(**socialized_context_dict)
-            except Exception:
-                socialized_context_dict = dictlize(socialized_context_dict)
-                socialized_context_dict["task_specific_instructions"] = (
-                    "You are dissecting the TOMI scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."
-                )
-                socialized_context = SocializedContext(**socialized_context_dict)
-            if identifier_key:
-                existing_socialized_contexts[simulation_dict[identifier_key]] = (
-                    socialized_context
-                )
+            if "simulations" in simulation_dict['socialized_context']:
+                # Handle SocialSimulation type
+                try:
+                    social_simulation = SocialSimulation(**simulation_dict)
+                except Exception:
+                    # If direct parsing fails, try to process each simulation individually
+                    simulations: list[SocializedContext] = []
+                    for sim in simulation_dict["socialized_context"]["simulations"]:
+                        try:
+                            socialized_context = SocializedContext(**sim)
+                            simulations.append(socialized_context)
+                        except Exception:
+                            socialized_context_dict = dictlize(sim)
+                            socialized_context = SocializedContext(**socialized_context_dict)
+                            simulations.append(socialized_context)
+                    social_simulation = SocialSimulation(simulations=simulations)
+                
+                if identifier_key:
+                    existing_social_simulations[simulation_dict[identifier_key]] = social_simulation
+                else:
+                    existing_social_simulations[file.stem] = social_simulation
             else:
-                existing_socialized_contexts[file.stem] = socialized_context
-    return existing_socialized_contexts
+                # Handle SocializedContext type
+                socialized_context_dict = simulation_dict["socialized_context"]
+                try:
+                    socialized_context = SocializedContext(**socialized_context_dict)
+                except Exception:
+                    socialized_context_dict = dictlize(socialized_context_dict)
+                    socialized_context = SocializedContext(**socialized_context_dict)
+                if identifier_key:
+                    existing_socialized_contexts[simulation_dict[identifier_key]] = socialized_context
+                else:
+                    existing_socialized_contexts[file.stem] = socialized_context
+    return existing_socialized_contexts, existing_social_simulations
 
 
 def dictlize(d: SocializedContextForModel | dict[str, Any]) -> dict[str, Any]:

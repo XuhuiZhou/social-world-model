@@ -7,6 +7,7 @@ from social_world_model.database import (
     SocializedContext,
     SocializedContextForModel,
     SocializedStructure,
+    SocialSimulation,
 )
 from sotopia.generation_utils import agenerate
 from social_world_model.engine import dictlize, GENERAL_GUIDELINES
@@ -48,6 +49,7 @@ class SocialWorldModel:
         model_name: str = "gpt-3.5-turbo",
         temperature: float = 0.7,
         existing_socialized_contexts: dict[str, SocializedContext] = {},
+        existing_social_simulations: dict[str, SocialSimulation] = {},
     ):
         """Initialize ToM engine.
 
@@ -66,6 +68,7 @@ class SocialWorldModel:
         self.agents: Dict[str, LLMAgent] = {}
         self.current_time = 0
         self.existing_socialized_contexts = existing_socialized_contexts
+        self.existing_social_simulations = existing_social_simulations
         self.simulation: Simulation = Simulation(
             agents=[], agent_memories={}, question="", reasoning="", answer=""
         )
@@ -318,13 +321,13 @@ class SocialWorldModel:
         """
         if not template:
             template = (
-                "Please analyze the following narrative.\n\n" "Context: {context}\n\n"
+                "Please analyze the following narrative/context.\n\n" "#### Context: {context}\n\n"
             )
 
         input_values = {"context": context}
 
         if self.task_specific_instructions:
-            template += "Task specific instructions: {task_specific_instructions}\n\n"
+            template += "#### Task specific instructions: {task_specific_instructions}\n\n"
             input_values["task_specific_instructions"] = self.task_specific_instructions
 
         if example_analysis:
@@ -350,9 +353,9 @@ class SocialWorldModel:
             socialized_context, SocializedContextForModel
         ), "Socialized context is not a SocializedContext"
         socialized_context_dict = dictlize(socialized_context)
-        context_manual = f"Here's how to interpret the socialized context: \n{json.dumps(SocializedContextForModel.model_json_schema(), indent=2)}\nTask specific instructions:{self.task_specific_instructions}"
+        socialized_context_dict["task_specific_instructions"] = self.task_specific_instructions
         socialized_context_processed = SocializedContext(
-            **socialized_context_dict, context_manual=context_manual
+            **socialized_context_dict
         )
         if critic_and_improve:
             socialized_context_processed = await self.critique_and_improve_context(
@@ -464,9 +467,9 @@ class SocialWorldModel:
     async def simulate_socialized_context(
         self,
         context: str,
-        socialized_context: SocializedContext | None = None,
+        social_simulation: SocialSimulation,
         critic_and_improve: bool = False,
-    ) -> SocializedContext:
+    ) -> SocialSimulation:
         """
         Simulates the socialized context from the given context.
 
@@ -474,14 +477,16 @@ class SocialWorldModel:
             context: The original context to simulate from
             socialized_context: The socialized context to simulate from
         """
-        if socialized_context:
-            processed_context = f"### Original Context:\n{context}\n\n{socialized_context.to_natural_language()}\n\n"
+        if social_simulation.simulations:
+            processed_context = f"### Original Context:\n{context}\n\n{social_simulation.to_natural_language()}\n\n"
+            template = "{context}\n\n ### Task Instructions:\nBased on the original context and simulations (i.e., #### Possible Social Simulation i) above, roll out a possible but very **different** simulation:"
         else:
             processed_context = f"### Original Context:\n{context}\n\n"
-        template = "Please analyze the current context and roll out the future socialized context from the following context (please be creative about the future roll out):\n{context}\n\n"
+            template = "Please analyze the current context and roll out the possible future socialized context from the following context:\n{context}\n\n"
         socialized_context = await self.socialize_context(
             context=processed_context,
             critic_and_improve=critic_and_improve,
             template=template,
         )
-        return socialized_context
+        social_simulation.simulations.append(socialized_context)
+        return social_simulation
