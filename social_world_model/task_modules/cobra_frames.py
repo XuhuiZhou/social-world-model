@@ -5,6 +5,7 @@ from social_world_model.database import SocialSimulation
 COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT = """IMPORTANT: The statement should be the first action of the speaker. And agents would be able to observe that before the action. Try to use <mental_state>...</mental_state> tags to describe the mental state of each agent.
 """
 
+
 def create_cobra_frames_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
@@ -92,12 +93,18 @@ def cobra_frames_evaluation_report(results: list[dict[str, Any]]) -> None:
 
 
 async def cobra_frames_simulation(
-    row: dict[str, Any], engine: Optional[SocialWorldModel] = None, num_simulations: int = 2
+    row: dict[str, Any],
+    engine: Optional[SocialWorldModel] = None,
+    num_simulations: int = 2,
 ) -> None:
     """Run simulation for COBRA frames task."""
     assert engine is not None, "Engine must be provided"
     social_simulation = SocialSimulation(simulations=[])
-    if row["index"] in engine.existing_social_simulations and len(engine.existing_social_simulations[row["index"]].simulations) >= num_simulations:
+    if (
+        row["index"] in engine.existing_social_simulations
+        and len(engine.existing_social_simulations[row["index"]].simulations)
+        >= num_simulations
+    ):
         social_simulation = engine.existing_social_simulations[row["index"]]
     else:
         social_simulation = SocialSimulation(simulations=[])

@@ -90,10 +90,14 @@ class SocializedContext(BaseModel):
 
 
 class SocialSimulation(BaseModel):
-    simulations: list[SocializedContext] = Field(description="A list of SocializedContext objects, each representing a simulation of the social world.")
+    simulations: list[SocializedContext] = Field(
+        description="A list of SocializedContext objects, each representing a simulation of the social world."
+    )
 
     def to_natural_language(self) -> str:
-        context_manual = self.simulations[0].context_manual # TODO: Assume all the simulations have the same context manual
+        context_manual = (
+            self.simulations[0].context_manual
+        )  # TODO: Assume all the simulations have the same context manual
         return (
             "### Social Simulation (the simulations based on the original context)\n\n"
             + "\n\n".join(

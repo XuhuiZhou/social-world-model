@@ -1,5 +1,9 @@
 from typing import Any
-from social_world_model.database import SocializedContextForModel, SocializedContext, SocialSimulation
+from social_world_model.database import (
+    SocializedContextForModel,
+    SocializedContext,
+    SocialSimulation,
+)
 import json
 from pathlib import Path
 
@@ -25,7 +29,7 @@ def load_existing_socialized_contexts(
     for file in data_path.glob("*.json"):
         with open(file, "r") as f:
             simulation_dict = json.load(f)
-            if "simulations" in simulation_dict['socialized_context']:
+            if "simulations" in simulation_dict["socialized_context"]:
                 # Handle SocialSimulation type
                 try:
                     social_simulation = SocialSimulation(**simulation_dict)
@@ -38,12 +42,16 @@ def load_existing_socialized_contexts(
                             simulations.append(socialized_context)
                         except Exception:
                             socialized_context_dict = dictlize(sim)
-                            socialized_context = SocializedContext(**socialized_context_dict)
+                            socialized_context = SocializedContext(
+                                **socialized_context_dict
+                            )
                             simulations.append(socialized_context)
                     social_simulation = SocialSimulation(simulations=simulations)
-                
+
                 if identifier_key:
-                    existing_social_simulations[simulation_dict[identifier_key]] = social_simulation
+                    existing_social_simulations[simulation_dict[identifier_key]] = (
+                        social_simulation
+                    )
                 else:
                     existing_social_simulations[file.stem] = social_simulation
             else:
@@ -55,7 +63,9 @@ def load_existing_socialized_contexts(
                     socialized_context_dict = dictlize(socialized_context_dict)
                     socialized_context = SocializedContext(**socialized_context_dict)
                 if identifier_key:
-                    existing_socialized_contexts[simulation_dict[identifier_key]] = socialized_context
+                    existing_socialized_contexts[simulation_dict[identifier_key]] = (
+                        socialized_context
+                    )
                 else:
                     existing_socialized_contexts[file.stem] = socialized_context
     return existing_socialized_contexts, existing_social_simulations

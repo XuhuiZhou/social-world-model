@@ -81,9 +81,11 @@ class ToMBenchmarkRunner:
         if existing_socialized_contexts_path and os.path.exists(
             existing_socialized_contexts_path["data_path"]
         ):
-            self.existing_socialized_contexts, self.existing_social_simulations = load_existing_socialized_contexts(
-                existing_socialized_contexts_path["data_path"],
-                existing_socialized_contexts_path["identifier_key"],
+            self.existing_socialized_contexts, self.existing_social_simulations = (
+                load_existing_socialized_contexts(
+                    existing_socialized_contexts_path["data_path"],
+                    existing_socialized_contexts_path["identifier_key"],
+                )
             )
 
     async def run_single_experiment(
@@ -102,7 +104,6 @@ class ToMBenchmarkRunner:
             existing_socialized_contexts=self.existing_socialized_contexts,
             existing_social_simulations=self.existing_social_simulations,
         )
-           
 
         save_dir = Path(
             f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
@@ -134,9 +135,10 @@ class ToMBenchmarkRunner:
         elif mode == "simulation":
             result = await self._run_simulation(row, benchmark_type, engine=engine)
         if save_result:
-            if "socialized_context" in result and (isinstance(
-                result["socialized_context"], SocializedContext
-            ) or isinstance(result["socialized_context"], SocialSimulation)):
+            if "socialized_context" in result and (
+                isinstance(result["socialized_context"], SocializedContext)
+                or isinstance(result["socialized_context"], SocialSimulation)
+            ):
                 result["socialized_context"] = result["socialized_context"].model_dump()
             self._save_result(result, result_path)
         return result
@@ -310,7 +312,9 @@ def validate_continue_mode(value: str) -> str:
 def validate_context_mode(value: str) -> str:
     """Validate context mode."""
     if value not in get_args(ContextModeType):
-        raise typer.BadParameter(f"Context mode must be one of {get_args(ContextModeType)}")
+        raise typer.BadParameter(
+            f"Context mode must be one of {get_args(ContextModeType)}"
+        )
     return value
 
 

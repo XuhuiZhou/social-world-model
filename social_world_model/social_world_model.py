@@ -321,13 +321,16 @@ class SocialWorldModel:
         """
         if not template:
             template = (
-                "Please analyze the following narrative/context.\n\n" "#### Context: {context}\n\n"
+                "Please analyze the following narrative/context.\n\n"
+                "#### Context: {context}\n\n"
             )
 
         input_values = {"context": context}
 
         if self.task_specific_instructions:
-            template += "#### Task specific instructions: {task_specific_instructions}\n\n"
+            template += (
+                "#### Task specific instructions: {task_specific_instructions}\n\n"
+            )
             input_values["task_specific_instructions"] = self.task_specific_instructions
 
         if example_analysis:
@@ -353,10 +356,10 @@ class SocialWorldModel:
             socialized_context, SocializedContextForModel
         ), "Socialized context is not a SocializedContext"
         socialized_context_dict = dictlize(socialized_context)
-        socialized_context_dict["task_specific_instructions"] = self.task_specific_instructions
-        socialized_context_processed = SocializedContext(
-            **socialized_context_dict
+        socialized_context_dict["task_specific_instructions"] = (
+            self.task_specific_instructions
         )
+        socialized_context_processed = SocializedContext(**socialized_context_dict)
         if critic_and_improve:
             socialized_context_processed = await self.critique_and_improve_context(
                 socialized_context=socialized_context_processed,
