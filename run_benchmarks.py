@@ -10,7 +10,7 @@ from sotopia.generation_utils import StrOutputParser, agenerate
 from typing import Any, Literal, get_args, Optional, cast
 from rich.logging import RichHandler
 from social_world_model.social_world_model import SocialWorldModel
-from social_world_model.database import SocializedContext
+from social_world_model.database import SocializedContext, SocialSimulation
 from social_world_model.task_modules import (
     tomi_simulation,
     fantom_simulation,
@@ -56,6 +56,7 @@ ModeType = Literal[
     "simulation",
     "generate_socialized_context",
 ]
+ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
 BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames"]
 SocializedContextPrompt = {
@@ -75,13 +76,16 @@ class ToMBenchmarkRunner:
     ):
         self.model_name = model_name
         self.dataset_name = dataset_name
-        self.existing_socialized_contexts = {}
+        self.existing_socialized_contexts: dict[str, SocializedContext] = {}
+        self.existing_social_simulations: dict[str, SocialSimulation] = {}
         if existing_socialized_contexts_path and os.path.exists(
             existing_socialized_contexts_path["data_path"]
         ):
-            self.existing_socialized_contexts = load_existing_socialized_contexts(
-                existing_socialized_contexts_path["data_path"],
-                existing_socialized_contexts_path["identifier_key"],
+            self.existing_socialized_contexts, self.existing_social_simulations = (
+                load_existing_socialized_contexts(
+                    existing_socialized_contexts_path["data_path"],
+                    existing_socialized_contexts_path["identifier_key"],
+                )
             )
 
     async def run_single_experiment(
@@ -96,9 +100,9 @@ class ToMBenchmarkRunner:
         """Run a single experiment for either ToMi or FANToM benchmark."""
         # Define result path regardless of continue mode
         engine = SocialWorldModel(
-            agent_prompt="You will be asking some questions about your beliefs. Assume that you can perceive every scene in your location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore.",
             model_name=self.model_name,
             existing_socialized_contexts=self.existing_socialized_contexts,
+            existing_social_simulations=self.existing_social_simulations,
         )
 
         save_dir = Path(
@@ -131,8 +135,9 @@ class ToMBenchmarkRunner:
         elif mode == "simulation":
             result = await self._run_simulation(row, benchmark_type, engine=engine)
         if save_result:
-            if "socialized_context" in result and isinstance(
-                result["socialized_context"], SocializedContext
+            if "socialized_context" in result and (
+                isinstance(result["socialized_context"], SocializedContext)
+                or isinstance(result["socialized_context"], SocialSimulation)
             ):
                 result["socialized_context"] = result["socialized_context"].model_dump()
             self._save_result(result, result_path)
@@ -187,7 +192,7 @@ class ToMBenchmarkRunner:
         assert isinstance(
             engine, SocialWorldModel
         ), "Engine must be an instance of ToMEngine"
-        if benchmark_type in ["cobra_frames"]:
+        if benchmark_type in []:
             critic_and_improve = True
         else:
             critic_and_improve = False
@@ -199,6 +204,7 @@ class ToMBenchmarkRunner:
         engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
+            example_analysis = str(example_analysis)
         else:
             example_analysis = ""
         if (
@@ -234,6 +240,7 @@ class ToMBenchmarkRunner:
         assert isinstance(
             engine, SocialWorldModel
         ), "Engine must be an instance of ToMEngine"
+        engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
         if benchmark_type == "tomi":
             assert (
                 str(row["index"]) in engine.existing_socialized_contexts
@@ -247,11 +254,7 @@ class ToMBenchmarkRunner:
             result = create_confaide_result(parsed_result, row)
         elif benchmark_type == "cobra_frames":
             await cobra_frames_simulation(row, engine)
-            result = await self._run_socialized_context(
-                row,
-                benchmark_type,
-                engine=engine,
-            )
+            result = await self._run_vanilla(row, benchmark_type)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -306,6 +309,15 @@ def validate_continue_mode(value: str) -> str:
     return value
 
 
+def validate_context_mode(value: str) -> str:
+    """Validate context mode."""
+    if value not in get_args(ContextModeType):
+        raise typer.BadParameter(
+            f"Context mode must be one of {get_args(ContextModeType)}"
+        )
+    return value
+
+
 @app.command()
 def run_benchmark(
     benchmark_type: str = typer.Argument(
@@ -330,6 +342,10 @@ def run_benchmark(
     example_analysis_file: str = typer.Option(
         "", help="Path to the example analysis file"
     ),
+    context_model: str = typer.Option(
+        "o1-2024-12-17",
+        help="Model to use for context generation",
+    ),
 ) -> None:
     """Run benchmark experiments."""
     if dataset_path is None:
@@ -343,6 +359,11 @@ def run_benchmark(
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
+        # Ensure index is string
+        if "index" in data.columns:
+            data["index"] = data["index"].astype(str)
+        if "set_id" in data.columns:
+            data["set_id"] = data["set_id"].astype(str)
     except Exception as e:
         # Load jsonl file for fantom and confaide datasets
         if dataset_path.endswith(".jsonl"):
@@ -356,7 +377,9 @@ def run_benchmark(
                         # For confaide, we assume the data is already flattened
                         data_list.append(entry)
             data = pd.DataFrame(data_list)
-            data["index"] = range(len(data))
+            data["index"] = [str(i) for i in range(len(data))]
+            if "set_id" in data.columns:
+                data["set_id"] = data["set_id"].astype(str)
         else:
             raise ValueError(f"Data set in a different format: {e}")
     if mode == "generate_socialized_context":
@@ -375,6 +398,7 @@ def run_benchmark(
             mode=mode,
             continue_mode=continue_mode,
             example_analysis_file=example_analysis_file,
+            context_model=context_model,
         )
     )
 
@@ -387,6 +411,7 @@ async def _run_benchmark(
     save: bool,
     model_name: str,
     mode: str,
+    context_model: str = "o1-2024-12-17",
     continue_mode: str = "new",
     example_analysis_file: str = "",
 ) -> None:
@@ -396,7 +421,7 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_context_o1-2024-12-17_{dataset_name}"
+                f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}"
             ),
             "identifier_key": "set_id"
             if benchmark_type in ["fantom", "confaide"]

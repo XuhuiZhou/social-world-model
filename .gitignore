@@ -132,6 +132,7 @@ dmypy.json
 
 # data
 data/*
+safe_data/*
 
 # deprecated
 deprecated/*

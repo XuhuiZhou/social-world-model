@@ -19,14 +19,16 @@ def prepare_tomi_vanilla(
             extra_info = ""
 
     question = row["question"]
-    template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the most detailed position possible e.g., the object is in A and A is in B, then you should answer 'A'. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and only include the most detailed location but not other information.
+    template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the **most detailed position possible** e.g., the object is in A and A is in B, then you should answer 'A'. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and only include the most **detailed** location but not other information.
 
-Below is the story and question:
+Below is the story and question (and optional extra information):
 ## Story
 {story}
+
 ## Extra Information
 (to help you better understand and answer the question)
 {extra_info}
+
 ## Question
 {question}"""
 
@@ -36,6 +38,7 @@ Below is the story and question:
     input_values = {
         "story": story,
         "question": question,
+        "extra_info": extra_info,
         "candidates": ", ".join(eval(row["cands"])) if row["cands"] else "",
     }
 
@@ -57,6 +60,9 @@ def create_tomi_result(
         "extra_info",
     ]
     result = {}
+    correct_answer = row["correct_answer"]
+    answer = parsed_result["answer"]
+    parsed_result["is_correct"] = correct_answer.lower() in answer.lower()
     for entry in targeted_entries:
         if entry in parsed_result:
             result[entry] = parsed_result[entry]
@@ -73,7 +79,6 @@ def tomi_evaluation_report(results: list[dict[str, Any]]) -> None:
     for result in results:
         if result["is_correct"]:
             correct_count += 1
-
     print(
         f"Current accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}"
     )
