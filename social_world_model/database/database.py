@@ -1,6 +1,7 @@
 from pydantic import Field, BaseModel
 from sotopia.messages import ActionType
 from typing import Any
+from typing import Any
 
 
 class SocializedStructureForModel(BaseModel):
@@ -12,6 +13,7 @@ class SocializedStructureForModel(BaseModel):
     )
     observations: list[str] = Field(
         description="The observations for each agent in the social world at this timestep. Note that the different agents may have different observations. The observation would go into corresponding agent's memory, so make sure the observation is clear for the agent to understand (first person perspective narrative is preferred). 1. If the observation covers the current state, use the special tag '<same_as_state />' to indicate that. 2. If the observation covers last timestep agents' actions, use '<same_as_last_action_x />' to cover that, x means the index of the agents. 3. For the internal thoughts, beliefs, or emotions of the agent that is not directly observable by other agents, use the special tag '<mental_state>...</mental_state>' to indicate the internal observation. You can of course combine these tags and add extra information after the tags (seperated by space). 4. Put 'none' if the agent does not observe anything at this timestep. Important note: this is the observation before the action is taken (e.g., the observation could be 'none' at the beginning if there are no prior contexts before the interaction starts). The format for each entry in the list is: 'agent_name: observation'"
+        description="The observations for each agent in the social world at this timestep. Note that the different agents may have different observations. The observation would go into corresponding agent's memory, so make sure the observation is clear for the agent to understand (first person perspective narrative is preferred). 1. If the observation covers the current state, use the special tag '<same_as_state />' to indicate that. 2. If the observation covers last timestep agents' actions, use '<same_as_last_action_x />' to cover that, x means the index of the agents. 3. For the internal thoughts, beliefs, or emotions of the agent that is not directly observable by other agents, use the special tag '<mental_state>...</mental_state>' to indicate the internal observation. You can of course combine these tags and add extra information after the tags (seperated by space). 4. Put 'none' if the agent does not observe anything at this timestep. Important note: this is the observation before the action is taken (e.g., the observation could be 'none' at the beginning if there are no prior contexts before the interaction starts). The format for each entry in the list is: 'agent_name: observation'"
     )
     actions: list[str] = Field(
         description="The actions for each agent in the social world at this timestep. The length of the list should be the same as the number of agents. Put 'none' if the agent does not take any action at this timestep. The format for each entry in the list is: 'agent_name: action'"
@@ -19,6 +21,18 @@ class SocializedStructureForModel(BaseModel):
 
 
 class SocializedStructure(BaseModel):
+    timestep: str = Field(
+        description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state."
+    )
+    state: str = Field(
+        description="The current state of the world (including all the agents) at this timestep. Important note: this is the state before the action is taken (e.g., the initial state could be 'none' at the beginning if there are no prior contexts before the interaction starts)."
+    )
+    observations: dict[str, str] = Field(
+        description="The observations for each agent in the social world at this timestep. Note that the different agents may have different observations.  1. The special tag '<same_as_state />' indicates the observation covers the current state. 2. The special tag '<same_as_last_action_x />' indicates the observation covers the last timestep agents' actions, x means the index of the agents. If no x provided, it means the observation covers the last timestep agents' actions. 3. The special tag '<mental_state>...</mental_state>' indicates the mental state of the agent. 4. 'none' means the agent does not observe anything at this timestep. Important note: this is the observation before the action is taken (e.g., the observation could be 'none' at the beginning if there are no prior contexts before the interaction starts)."
+    )
+    actions: dict[str, str] = Field(
+        description="The actions for each agent in the social world at this timestep. 'none' represents that the agent does not take any action at this timestep."
+    )
     timestep: str = Field(
         description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state."
     )
@@ -53,6 +67,10 @@ class SocializedContextForModel(BaseModel):
 
 
 class SocializedContext(BaseModel):
+    agents_names: list[str] = Field(description="The names of the agents")
+    socialized_context: list[SocializedStructure] = Field(
+        description="A list of SocializedStructure objects, each representing a timestep of the social world."
+    )
     agents_names: list[str] = Field(description="The names of the agents")
     socialized_context: list[SocializedStructure] = Field(
         description="A list of SocializedStructure objects, each representing a timestep of the social world."
@@ -93,6 +111,46 @@ class SocialSimulation(BaseModel):
     simulations: list[SocializedContext] = Field(
         description="A list of SocializedContext objects, each representing a simulation of the social world."
     )
+
+    def to_natural_language(self) -> str:
+        context_manual = (
+            self.simulations[0].context_manual
+        )  # TODO: Assume all the simulations have the same context manual
+        return (
+            "### Social Simulation (the simulations based on the original context)\n\n"
+            + "\n\n".join(
+                [
+                    f"#### Possible Social Simulation {index}:\n"
+                    + simulation.model_dump_json(indent=2, exclude={"context_manual"})
+                    for index, simulation in enumerate(self.simulations)
+                ]
+            )
+            + "\n\n"
+            + context_manual
+        )
+
+
+class SocialSimulation(BaseModel):
+    simulations: list[SocializedContext] = Field(
+        description="A list of SocializedContext objects, each representing a simulation of the social world."
+    )
+
+    def __init__(self, **data: Any) -> None:
+        # Add timesteps if not present
+        if "socialized_context" in data:
+            for i, structure in enumerate(data["socialized_context"]):
+                if "timestep" not in structure:
+                    structure["timestep"] = str(i)
+
+        # Add context manual if not present
+        if "context_manual" not in data:
+            import json
+
+            data["context_manual"] = (
+                f"#### Context Manual\nHere's how to interpret the above socialized context (i.e., the json schema): \n{json.dumps(SocializedContext.model_json_schema(), indent=2)}\n#### Here's the context specific instuctions when generating the socialized context (should help you better understand the socialized context):\n{data.get('task_specific_instructions', '')}"
+            )
+
+        super().__init__(**data)
 
     def to_natural_language(self) -> str:
         context_manual = (

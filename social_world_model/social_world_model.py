@@ -11,6 +11,7 @@ from social_world_model.database import (
 )
 from sotopia.generation_utils import agenerate
 from social_world_model.engine import dictlize, GENERAL_GUIDELINES
+from social_world_model.engine import dictlize, GENERAL_GUIDELINES
 import json
 
 
@@ -305,6 +306,12 @@ class SocialWorldModel:
         feedback: str = "",
         critic_and_improve: bool = False,
         template: str = "",
+        self,
+        context: str,
+        example_analysis: str = "",
+        feedback: str = "",
+        critic_and_improve: bool = False,
+        template: str = "",
     ) -> SocializedContext:
         """
         Analyzes and socializes context for the simulation.
@@ -420,6 +427,7 @@ class SocialWorldModel:
 
     async def critic_socialize_context(
         self, socialized_context: str, example_patterns: str = ""
+        self, socialized_context: str, example_patterns: str = ""
     ) -> Tuple[bool, str]:
         """
         Evaluates whether the socialized context is good enough based on provided patterns.
@@ -440,9 +448,12 @@ class SocialWorldModel:
             "You are a critical evaluator of socialized context for simulations.\n\n"
             "Please evaluate the following socialized context:\n{socialized_context}\n\n"
             "Here are some general guidelines for good socialized context:\n{GENERAL_GUIDELINES}\n\n"
+            "Here are some general guidelines for good socialized context:\n{GENERAL_GUIDELINES}\n\n"
             "Task specific requirements and example errors patterns/criteria for bad socialized context:\n{example_patterns}\n\n"
             "The expected format for a good SocializedContext is:\n{format_instructions}\n\n"
             "Evaluate if this socialized context is good enough for simulation. Consider:\n"
+            "If the context is good enough, respond with 'yes', following with the reasoning of the judgement.\n"
+            "If the context is not good enough, respond with 'no', following with the reasoning of the judgement and provide specific feedback on what needs to be improved."
             "If the context is good enough, respond with 'yes', following with the reasoning of the judgement.\n"
             "If the context is not good enough, respond with 'no', following with the reasoning of the judgement and provide specific feedback on what needs to be improved."
         )
@@ -452,6 +463,7 @@ class SocialWorldModel:
             template=template,
             input_values={
                 "socialized_context": socialized_context,
+                "GENERAL_GUIDELINES": GENERAL_GUIDELINES,
                 "GENERAL_GUIDELINES": GENERAL_GUIDELINES,
                 "example_patterns": example_patterns,
                 "format_instructions": format_instructions,

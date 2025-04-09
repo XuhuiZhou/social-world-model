@@ -39,6 +39,11 @@ from social_world_model.task_modules import (
     cobra_frames_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
     reformat_hitom_data,
+    COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
+    cobra_frames_simulation,
+    prepare_cobra_frames_vanilla,
+    create_cobra_frames_result,
+    cobra_frames_evaluation_report,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -65,11 +70,13 @@ ModeType = Literal[
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
 BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
+BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
 }
 
@@ -167,6 +174,8 @@ class ToMBenchmarkRunner:
             template, input_values = prepare_confaide_vanilla(row, pure_context)
         elif benchmark_type == "cobra_frames":
             template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
+        elif benchmark_type == "cobra_frames":
+            template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "hitom":
             template, input_values = prepare_hitom_vanilla(row, pure_context)
         # Generate response
@@ -188,6 +197,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":
             parsed_result = self._parse_response(response, row)
             result = create_confaide_result(parsed_result, row)
+        elif benchmark_type == "cobra_frames":
+            parsed_result = self._parse_response(response, row)
+            result = create_cobra_frames_result(parsed_result, row)
         elif benchmark_type == "cobra_frames":
             parsed_result = self._parse_response(response, row)
             result = create_cobra_frames_result(parsed_result, row)
@@ -225,6 +237,7 @@ class ToMBenchmarkRunner:
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
             example_analysis = str(example_analysis)
+            example_analysis = str(example_analysis)
         else:
             example_analysis = ""
         if (
@@ -235,6 +248,7 @@ class ToMBenchmarkRunner:
             else:
                 socialized_context = await engine.socialize_context(
                     context, example_analysis, critic_and_improve=critic_and_improve
+                    context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
@@ -242,6 +256,7 @@ class ToMBenchmarkRunner:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
                 socialized_context = await engine.socialize_context(
+                    context, example_analysis, critic_and_improve=critic_and_improve
                     context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
@@ -382,6 +397,7 @@ def run_benchmark(
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
+            "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data.csv",
         }[benchmark_type]
 
@@ -498,6 +514,9 @@ async def _run_benchmark(
         fantom_evaluation_report(all_results)
     elif benchmark_type == "confaide":
         confaide_evaluation_report(all_results)
+    elif benchmark_type == "cobra_frames":
+        cobra_frames_evaluation_report(all_results)
+
     elif benchmark_type == "cobra_frames":
         cobra_frames_evaluation_report(all_results)
 
