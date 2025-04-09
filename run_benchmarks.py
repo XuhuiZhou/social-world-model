@@ -215,17 +215,17 @@ class ToMBenchmarkRunner:
             context = row["story"]
         else:
             context = row["context"]
-        engine.set_task_specific_instructions(
-            SocializedContextPrompt[benchmark_type]
-        )
+        engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
             example_analysis = str(example_analysis)
         else:
             example_analysis = ""
-        if (
-            benchmark_type in ["fantom", "confaide", "hitom"]
-        ):  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
+        if benchmark_type in [
+            "fantom",
+            "confaide",
+            "hitom",
+        ]:  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
@@ -280,9 +280,7 @@ class ToMBenchmarkRunner:
             result = await self._run_vanilla(row, benchmark_type)
         return result
 
-    def _parse_response(
-        self, response: str, row: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _parse_response(self, response: str, row: dict[str, Any]) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
             reasoning = response.split("</reasoning>")[0].strip()
@@ -293,8 +291,8 @@ class ToMBenchmarkRunner:
             answer = response
 
         return {
-           "reasoning": reasoning,
-           "answer": answer,
+            "reasoning": reasoning,
+            "answer": answer,
         }
 
     def _save_result(self, result: dict[str, Any], result_path: Path) -> None:
@@ -400,9 +398,9 @@ def run_benchmark(
                         data_list.append(entry)
             data = pd.DataFrame(data_list)
             data["index"] = [str(i) for i in range(len(data))]
-            
-        elif dataset_path.endswith('.json'):
-            with open(dataset_path, 'r') as f:
+
+        elif dataset_path.endswith(".json"):
+            with open(dataset_path, "r") as f:
                 data_list = json.load(f)
                 data = pd.DataFrame(data_list)
         else:
@@ -429,6 +427,7 @@ def run_benchmark(
         )
     )
 
+
 async def _run_benchmark(
     benchmark_type: str,
     dataset_name: str,
@@ -449,13 +448,15 @@ async def _run_benchmark(
             "data_path": Path(
                 f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}"
             ),
-            "identifier_key": "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None,
+            "identifier_key": (
+                "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None
+            ),
         },
     )
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
     all_results = []
     for i in range(0, len(data), batch_size):
-        batch = data.iloc[i : i + batch_size].to_dict('records')
+        batch = data.iloc[i : i + batch_size].to_dict("records")
         print(
             f"\nProcessing batch {i//batch_size + 1}/{(len(data) + batch_size - 1)//batch_size}"
         )
@@ -465,17 +466,21 @@ async def _run_benchmark(
                 cast(dict[str, Any], row),
                 benchmark_type=cast(
                     BenchmarkType,
-                    benchmark_type
-                    if benchmark_type in get_args(BenchmarkType)
-                    else "tomi",
+                    (
+                        benchmark_type
+                        if benchmark_type in get_args(BenchmarkType)
+                        else "tomi"
+                    ),
                 ),
                 save_result=save,
                 mode=cast(ModeType, mode if mode in get_args(ModeType) else "vanilla"),
                 continue_mode=cast(
                     ContinueModeType,
-                    continue_mode
-                    if continue_mode in get_args(ContinueModeType)
-                    else "new",
+                    (
+                        continue_mode
+                        if continue_mode in get_args(ContinueModeType)
+                        else "new"
+                    ),
                 ),
                 example_analysis_file=example_analysis_file,
             )
@@ -495,6 +500,7 @@ async def _run_benchmark(
         cobra_frames_evaluation_report(all_results)
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
+
 
 if __name__ == "__main__":
     app()
