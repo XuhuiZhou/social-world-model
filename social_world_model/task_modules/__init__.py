@@ -31,14 +31,6 @@ from .cobra_frames import (
     COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
 )
 
-from .cobra_frames import (
-    cobra_frames_simulation,
-    prepare_cobra_frames_vanilla,
-    create_cobra_frames_result,
-    cobra_frames_evaluation_report,
-    COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
-)
-
 from .hitom import (
     hitom_simulation,
     prepare_hitom_vanilla,
@@ -66,11 +58,6 @@ __all__ = [
     "TOMI_SOCIALIZED_CONTEXT_PROMPT",
     "FANTOM_SOCIALIZED_CONTEXT_PROMPT",
     "CONFAIDE_SOCIALIZED_CONTEXT_PROMPT",
-    "cobra_frames_simulation",
-    "prepare_cobra_frames_vanilla",
-    "create_cobra_frames_result",
-    "cobra_frames_evaluation_report",
-    "COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT",
     "cobra_frames_simulation",
     "prepare_cobra_frames_vanilla",
     "create_cobra_frames_result",

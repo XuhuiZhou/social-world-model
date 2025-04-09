@@ -39,11 +39,6 @@ from social_world_model.task_modules import (
     cobra_frames_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
     reformat_hitom_data,
-    COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
-    cobra_frames_simulation,
-    prepare_cobra_frames_vanilla,
-    create_cobra_frames_result,
-    cobra_frames_evaluation_report,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -75,7 +70,6 @@ SocializedContextPrompt = {
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
-    "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
 }
 
@@ -161,18 +155,12 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
-        if "extra_info" in row:
-            extra_info = row["extra_info"]
-        else:
-            extra_info = ""
         if benchmark_type == "tomi":
             template, input_values = prepare_tomi_vanilla(row, pure_context)
         elif benchmark_type == "fantom":  # fantom
             template, input_values = prepare_fantom_vanilla(row, pure_context)
         elif benchmark_type == "confaide":  # confaide
             template, input_values = prepare_confaide_vanilla(row, pure_context)
-        elif benchmark_type == "cobra_frames":
-            template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "cobra_frames":
             template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "hitom":
@@ -196,9 +184,6 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "confaide":
             parsed_result = self._parse_response(response, row)
             result = create_confaide_result(parsed_result, row)
-        elif benchmark_type == "cobra_frames":
-            parsed_result = self._parse_response(response, row)
-            result = create_cobra_frames_result(parsed_result, row)
         elif benchmark_type == "cobra_frames":
             parsed_result = self._parse_response(response, row)
             result = create_cobra_frames_result(parsed_result, row)
@@ -236,7 +221,6 @@ class ToMBenchmarkRunner:
         if example_analysis_file:
             example_analysis = json.load(open(example_analysis_file))
             example_analysis = str(example_analysis)
-            example_analysis = str(example_analysis)
         else:
             example_analysis = ""
         if (
@@ -247,7 +231,6 @@ class ToMBenchmarkRunner:
             else:
                 socialized_context = await engine.socialize_context(
                     context, example_analysis, critic_and_improve=critic_and_improve
-                    context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
@@ -255,7 +238,6 @@ class ToMBenchmarkRunner:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
                 socialized_context = await engine.socialize_context(
-                    context, example_analysis, critic_and_improve=critic_and_improve
                     context, example_analysis, critic_and_improve=critic_and_improve
                 )
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
@@ -303,15 +285,12 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
-            reasoning = response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
-            answer = response.split("<answer>")[1].split("</answer>")[0].strip() 
-        except:
-            try:
-                reasoning = response.split("<think>")[1].split("</think>")[0].strip()
-                answer = response.split("<answer>")[1].split("</answer>")[0].strip()
-            except:
-                reasoning = "Failed to parse reasoning"
-                answer = response
+            reasoning = response.split("</reasoning>")[0].strip()
+            answer = response.split("<answer>")[1].split("</answer>")[0].strip()
+        except Exception as e:
+            print(f"Failed to parse response: {e}")
+            reasoning = "Failed to parse reasoning"
+            answer = response
 
         return {
            "reasoning": reasoning,
@@ -396,7 +375,6 @@ def run_benchmark(
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
-            "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data.csv",
         }[benchmark_type]
 
@@ -410,9 +388,9 @@ def run_benchmark(
             data["set_id"] = data["set_id"].astype(str)
     except Exception as e:
         # Load jsonl file for fantom and confaide datasets
-        if dataset_path.endswith('.jsonl'):
+        if dataset_path.endswith(".jsonl"):
             data_list = []
-            with open(dataset_path, 'r') as f:
+            with open(dataset_path, "r") as f:
                 for line in f:
                     entry = json.loads(line)
                     if benchmark_type == "fantom":
@@ -515,10 +493,6 @@ async def _run_benchmark(
         confaide_evaluation_report(all_results)
     elif benchmark_type == "cobra_frames":
         cobra_frames_evaluation_report(all_results)
-
-    elif benchmark_type == "cobra_frames":
-        cobra_frames_evaluation_report(all_results)
-
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
 
