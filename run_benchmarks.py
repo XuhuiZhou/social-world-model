@@ -38,7 +38,6 @@ from social_world_model.task_modules import (
     create_cobra_frames_result,
     cobra_frames_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
-    reformat_hitom_data,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -221,11 +220,14 @@ class ToMBenchmarkRunner:
             example_analysis = str(example_analysis)
         else:
             example_analysis = ""
-        if benchmark_type in [
-            "fantom",
-            "confaide",
-            "hitom",
-        ]:  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
+        if (
+            benchmark_type
+            in [
+                "fantom",
+                "confaide",
+                "hitom",
+            ]
+        ):  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:

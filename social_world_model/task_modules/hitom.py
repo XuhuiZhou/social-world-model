@@ -1,9 +1,6 @@
 import re
 import pandas as pd
-from pathlib import Path
 from social_world_model.social_world_model import SocialWorldModel
-from social_world_model.database import SocializedContext
-import json
 from typing import Any, Optional
 from copy import deepcopy
 
@@ -23,7 +20,6 @@ def reformat_hitom_data(data_list: dict[str, Any]) -> pd.DataFrame:
 def prepare_hitom_vanilla(
     row: dict[str, Any], pure_context: bool = False
 ) -> tuple[str, dict[str, Any]]:
-
     story = row["story"]
     extra_info = row.get("extra_info", "")
     if extra_info:
