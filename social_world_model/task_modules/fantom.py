@@ -497,11 +497,15 @@ class FantomEvalAgent:
                 & list_wrong["included_unaware_character"]
             )
             list_wrong["reason"] = list_wrong.apply(
-                lambda x: "did_both"
-                if x["both"]
-                else "excluded_aware_character"
-                if x["excluded_aware_character"]
-                else "included_unaware_character",
+                lambda x: (
+                    "did_both"
+                    if x["both"]
+                    else (
+                        "excluded_aware_character"
+                        if x["excluded_aware_character"]
+                        else "included_unaware_character"
+                    )
+                ),
                 axis=1,
             )
             report[target_scenario + ":tom:lists:wrong_reasons:freq"] = (

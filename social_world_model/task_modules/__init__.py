@@ -31,6 +31,15 @@ from .cobra_frames import (
     COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
 )
 
+from .hitom import (
+    hitom_simulation,
+    prepare_hitom_vanilla,
+    create_hitom_result,
+    hitom_evaluation_report,
+    HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    reformat_hitom_data,
+)
+
 __all__ = [
     "tomi_simulation",
     "prepare_tomi_vanilla",
@@ -55,4 +64,10 @@ __all__ = [
     "create_cobra_frames_result",
     "cobra_frames_evaluation_report",
     "COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT",
+    "hitom_simulation",
+    "prepare_hitom_vanilla",
+    "create_hitom_result",
+    "hitom_evaluation_report",
+    "HITOM_SOCIALIZED_CONTEXT_PROMPT",
+    "reformat_hitom_data",
 ]
