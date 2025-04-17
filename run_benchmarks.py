@@ -448,7 +448,7 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}"
+                f"data/{benchmark_type}_results/socialized_contexts_{context_model}_{dataset_name}"
             ),
             "identifier_key": (
                 "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None
