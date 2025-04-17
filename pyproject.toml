@@ -46,11 +46,8 @@ exclude = ["data/*", "hidden_utils/*"]
 
 
 [tool.uv.sources]
-sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "main" }
+sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "feature/benchmark_with_customed_agents" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/social_world_model"]
