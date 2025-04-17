@@ -68,7 +68,7 @@ ModeType = Literal[
 ]
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom" "mmtom"]
+BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom", "mmtom"]
 
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
