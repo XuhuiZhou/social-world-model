@@ -398,7 +398,7 @@ def run_benchmark(
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data.csv",
-            "lifechoices": "./data/lifechoices_data/reformatted_data.json",
+            "lifechoices": "./data/lifechoices_data/reformatted_data100.json",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -427,7 +427,7 @@ def run_benchmark(
         elif dataset_path.endswith(".json"):
             with open(dataset_path, "r") as f:
                 data_list = json.load(f)
-                data = pd.DataFrame(data_list)
+                data = pd.DataFrame(data_list).head(30)
         else:
             raise ValueError(f"Data set in a different format: {e}")
         if "set_id" in data.columns:
