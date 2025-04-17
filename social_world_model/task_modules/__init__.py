@@ -40,6 +40,14 @@ from .hitom import (
     reformat_hitom_data,
 )
 
+from .lifechoices import (
+    lifechoices_simulation,
+    prepare_lifechoices_vanilla,
+    create_lifechoices_result,
+    lifechoices_evaluation_report,
+    LIFECHOICES_SOCIALIZED_CONTEXT_PROMPT,
+)
+
 __all__ = [
     "tomi_simulation",
     "prepare_tomi_vanilla",
@@ -70,4 +78,9 @@ __all__ = [
     "hitom_evaluation_report",
     "HITOM_SOCIALIZED_CONTEXT_PROMPT",
     "reformat_hitom_data",
+    "lifechoices_simulation",
+    "prepare_lifechoices_vanilla",
+    "create_lifechoices_result",
+    "lifechoices_evaluation_report",
+    "LIFECHOICES_SOCIALIZED_CONTEXT_PROMPT",
 ]
