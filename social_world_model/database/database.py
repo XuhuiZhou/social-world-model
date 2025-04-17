@@ -1,7 +1,7 @@
 from pydantic import Field, BaseModel
 from sotopia.messages import ActionType
 from typing import Any
-
+import json
 
 class SocializedStructureForModel(BaseModel):
     timestep: str = Field(
@@ -70,11 +70,7 @@ class SocializedContext(BaseModel):
 
         # Add context manual if not present
         if "context_manual" not in data:
-            import json
-
-            data["context_manual"] = (
-                f"#### Context Manual\nHere's how to interpret the above socialized context (i.e., the json schema): \n{json.dumps(SocializedContext.model_json_schema(), indent=2)}\n#### Here's the context specific instuctions when generating the socialized context (should help you better understand the socialized context):\n{data.get('task_specific_instructions', 'no specific instructions when generating the socialized context')}"
-            )
+            data["context_manual"] = self.create_context_manual(data.get('task_specific_instructions', 'no domain specific instructions when generating the socialized context'))
 
         super().__init__(**data)
 
@@ -86,6 +82,11 @@ class SocializedContext(BaseModel):
             + self.model_dump_json(indent=2, exclude={"context_manual"})
             + "\n\n"
             + context_manual
+        )
+
+    def create_context_manual(self, task_specific_instructions: str) -> str:
+        return (
+            f"#### Context Manual\nHere's how to interpret the above socialized context (i.e., the json schema): \n{json.dumps(SocializedContext.model_json_schema(), indent=2)}\n#### Here's the domain specific instuctions when generating the socialized context (should help you better understand the socialized context):\n{task_specific_instructions}"
         )
 
 
