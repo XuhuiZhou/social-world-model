@@ -1,11 +1,148 @@
 from sotopia.agents import LLMAgent
 from sotopia.database import AgentProfile
 from sotopia.messages import AgentAction, Observation
-from sotopia.generation_utils import agenerate_action
+from sotopia.generation_utils import agenerate, agenerate_action
 from social_world_model.database import SocializedContext, SocializedStructure
 from social_world_model.social_world_model import SocialWorldModel
 from typing import Optional
 import logging
+from pydantic import validate_call
+from sotopia.messages import ActionType, Message
+from rich.logging import RichHandler
+from sotopia.generation_utils.output_parsers import PydanticOutputParser
+from pydantic import Field
+
+# Configure logger
+log = logging.getLogger("social_world_model.agent")
+log.setLevel(logging.INFO)
+
+# Create console handler with rich formatting
+console_handler = RichHandler(rich_tracebacks=True)
+console_handler.setLevel(logging.INFO)
+
+# Create formatter
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+console_handler.setFormatter(formatter)
+
+# Add handler to logger
+log.addHandler(console_handler)
+
+class StateThenAction(Message):
+    predict_interlocutor_social_goal: str = Field(
+        description="first predict the interlocutor's social goal"
+    )
+    action_type: ActionType = Field(
+        description="whether to speak at this turn or choose to not do anything"
+    )
+    argument: str = Field(
+        description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"
+    )
+
+@validate_call
+async def agenerate_state_then_action(
+    model_name: str,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    agent: str,
+    temperature: float = 0.7,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    structured_output: bool = True,
+) -> AgentAction:
+    try:
+        template = """
+            Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
+            You can find {agent}'s goal (or background) in the 'Here is the context of the interaction' field.
+            Note that {agent}'s goal is only visible to you.
+            You should try your best to achieve {agent}'s goal in a way that align with their character traits. 
+            Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
+            {history}.
+            You are at Turn #{turn_number}. Your available action types are
+            {action_list}.
+            Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
+
+            Please only generate a JSON string including the action type and the argument.
+            Your action should follow the given format:
+            {format_instructions}
+        """
+        result = await agenerate(
+            model_name=model_name,
+            template=template,
+            input_values=dict(
+                agent=agent,
+                turn_number=str(turn_number),
+                history=history,
+                action_list=" ".join(action_types),
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+            temperature=temperature,
+            bad_output_process_model=bad_output_process_model,
+            use_fixed_model_version=use_fixed_model_version,
+            structured_output=structured_output,
+        )
+        assert isinstance(result, AgentAction)
+        return result
+    except Exception as e:
+        log.warning(f"Failed to generate action due to {e}")
+        return AgentAction(action_type="none", argument="")
+
+@validate_call
+async def agenerate_refined_action(
+    model_name: str,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    socialized_context_info: str,
+    intended_action: str,
+    agent: str,
+    temperature: float = 0.7,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    structured_output: bool = True,
+) -> AgentAction:
+    try:
+        template = """
+            You are {agent}.
+            Here is the interaction history between you and the other agent so far:
+            {history}
+
+            Here is your intended action:
+            {intended_action}
+
+            Here is the predicted mental states after you take the intended action (you should use them to generate better actions for achieving your goal):
+            {socialized_context_info}
+
+            Please generate a refined action so that you can achieve your (i.e., {agent}'s) goal better.
+
+            Please only generate a JSON string including the action type and the argument.
+            Your action should follow the given format:
+            {format_instructions}
+        """
+        result = await agenerate(
+            model_name=model_name,
+            template=template,
+            input_values=dict(
+                agent=agent,
+                turn_number=str(turn_number),
+                history=history,
+                intended_action=intended_action,
+                socialized_context_info=socialized_context_info,
+                action_list=" ".join(action_types),
+            ),
+            output_parser=PydanticOutputParser(pydantic_object=AgentAction),
+            temperature=temperature,
+            bad_output_process_model=bad_output_process_model,
+            use_fixed_model_version=use_fixed_model_version,
+            structured_output=structured_output,
+        )
+        assert isinstance(result, AgentAction)
+        return result
+    except Exception as e:
+        log.warning(f"Failed to generate refined action due to {e}")
+        return AgentAction(action_type="none", argument="")
 
 class SocialWorldModelAgent(LLMAgent):
     def __init__(
@@ -30,8 +167,8 @@ class SocialWorldModelAgent(LLMAgent):
                 "task_specific_instructions": "<same_as_next_state /> means the content is the same as the state of the next timestep.",
             }
         )
-        self.engine = SocialWorldModel(model_name=self.model_name)
-        self.additional_instructions = f"Please additionally add the <mental_state> </mental_state> of each agent in their observations reacting to {self.agent_name}'s action. More specifically, fill in the social goal of the agents in the <mental_state> </mental_state>."
+        self.engine = SocialWorldModel(model_name="gpt-4.1-2025-04-14")
+        self.additional_instructions = f"Please additionally add the <mental_state> </mental_state> of each agent in their observations reacting to {self.agent_name}'s action. More specifically, first, fill in the social goal of the agents in the <mental_state> </mental_state>. IMPORTANT: 1. the social goal of {self.agent_name} should be the same with their original goal. 2. each agent should act turn by turn. 3. Be dramatic and emotional."
         self.last_socialized_context_step: Optional[SocializedStructure] = None
     
     async def predict_socialized_context(self, obs: Observation, action: AgentAction) -> SocializedContext:
@@ -80,7 +217,7 @@ class SocialWorldModelAgent(LLMAgent):
         self.recv_message("Environment", obs)
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             none_action = AgentAction(action_type="none", argument="")
-            await self.predict_socialized_context(obs, none_action)
+            #await self.predict_socialized_context(obs, none_action)
             return none_action
         else:
             action = await agenerate_action(
@@ -90,7 +227,6 @@ class SocialWorldModelAgent(LLMAgent):
                 action_types=obs.available_actions,
                 agent=self.agent_name,
                 goal=self.goal,
-                script_like=self.script_like,
                 structured_output=True,
             )
             assert isinstance(action, AgentAction)
@@ -101,21 +237,17 @@ class SocialWorldModelAgent(LLMAgent):
                 logging.warning(f"Error predicting socialized context: {e}")
                 return action
             # Regenerate the action based on the imagined last socialized context step
-            socialized_context_info = f"""Imagined context: you might think of the following action:
-{action.to_natural_language()}
-And here's the potential mental states and reactions of the other agent:
-- Other agent's mental state: {self.last_socialized_context_step.observations[self.partner_name]}
-- Expected other agent's reaction: {self.last_socialized_context_step.actions[self.partner_name]}
-Based on the imagined context, refine your action if needed.
+            socialized_context_info = f"""- Your ({self.agent_name}'s) mental state: {self.last_socialized_context_step.observations[self.agent_name].replace("<same_as_state />", "")}
+- Other agent's mental state: {self.last_socialized_context_step.observations[self.partner_name].replace("<same_as_state />", "")}
 """
-            refined_action = await agenerate_action(
+            refined_action = await agenerate_refined_action(
                 self.model_name,
-                history=f"\n".join(f"{y.to_natural_language()}" for x, y in self.inbox) + "\n" + socialized_context_info,
+                history=f"\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
+                intended_action=action.to_natural_language(),
+                socialized_context_info=socialized_context_info,
                 turn_number=obs.turn_number,
                 action_types=obs.available_actions,
                 agent=self.agent_name,
-                goal=self.goal,
-                script_like=self.script_like,
                 structured_output=True,
             )
             assert isinstance(refined_action, AgentAction)
