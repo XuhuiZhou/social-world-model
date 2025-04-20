@@ -377,7 +377,11 @@ class FantomEvalAgent:
         # Convert string results to boolean/float if needed
         if isinstance(df.result.iloc[0], str):
             df["result"] = df["result"].map(
-                lambda x: x == "True" if isinstance(x, str) and x.endswith("e") else float(x) if isinstance(x, (str, float, int)) else x
+                lambda x: x == "True"
+                if isinstance(x, str) and x.endswith("e")
+                else float(x)
+                if isinstance(x, (str, float, int))
+                else x
             )
 
         # Filter ToM questions and target scenario
@@ -652,11 +656,11 @@ async def fantom_simulation(
         A dictionary containing the simulation results
     """
     assert engine is not None, "Engine must be provided"
- 
+
     result = {
         "extra_info": ""
         + "\n\n"
-        + f"### Reasoning and answers from each agent participating in the conversation. They are simulated agents with partial memory of the whole conversation (induced from the socialized context above), so the answers are subjective and not always correct. Please use them as extra information to help you answer the question.",
+        + "### Reasoning and answers from each agent participating in the conversation. They are simulated agents with partial memory of the whole conversation (induced from the socialized context above), so the answers are subjective and not always correct. Please use them as extra information to help you answer the question.",
         "memory": "",
         "agents": "",
         "socialized_context": "",

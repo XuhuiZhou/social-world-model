@@ -99,7 +99,9 @@ def dictlize(d: SocializedContextForModel | dict[str, Any]) -> dict[str, Any]:
     return {"agents_names": agents_names, "socialized_context": socialized_events}
 
 
-def dictlize_socialized_structure(d: SocializedStructureForModel | dict[str, Any]) -> dict[str, Any]:
+def dictlize_socialized_structure(
+    d: SocializedStructureForModel | dict[str, Any],
+) -> dict[str, Any]:
     """Convert a SocializedStructureForModel or a dictionary into a dictionary format.
 
     Args:
@@ -121,5 +123,3 @@ def dictlize_socialized_structure(d: SocializedStructureForModel | dict[str, Any
                     k, v = item.split(":", 1)
                     event[key][k.strip()] = v.strip()
     return event
-
-

@@ -10,7 +10,11 @@ from social_world_model.database import (
     SocializedStructureForModel,
 )
 from sotopia.generation_utils import agenerate
-from social_world_model.engine import dictlize, dictlize_socialized_structure, GENERAL_GUIDELINES
+from social_world_model.engine import (
+    dictlize,
+    dictlize_socialized_structure,
+    GENERAL_GUIDELINES,
+)
 import json
 
 
@@ -98,7 +102,6 @@ class SocialWorldModel:
         ), "Output parser did not return an ObsDistribution"
         return agent_memory.agents_per_observation
 
-
     async def decode_socialized_context(
         self, socialized_context: SocializedContext
     ) -> SocializedContext:
@@ -157,7 +160,6 @@ class SocialWorldModel:
             # Add the decoded step to the new context
             decoded_context.socialized_context.append(decoded_step)
         return decoded_context
-
 
     async def socialize_context(
         self,
@@ -354,8 +356,10 @@ class SocialWorldModel:
         )
         social_simulation.simulations.append(socialized_context)
         return social_simulation
-    
-    async def simulate_one_step(self, socialized_context: SocializedContext, additional_instructions: str = "") -> SocializedContext:
+
+    async def simulate_one_step(
+        self, socialized_context: SocializedContext, additional_instructions: str = ""
+    ) -> SocializedContext:
         """
         Simulates one step of the social simulation.
 
@@ -373,8 +377,10 @@ class SocialWorldModel:
         )
         if additional_instructions:
             template += f"Additional instructions: {additional_instructions}\n\n"
-        
-        template += "The next step should follow the given format: {format_instructions}"
+
+        template += (
+            "The next step should follow the given format: {format_instructions}"
+        )
 
         # Format the context history for the template
         context_history = socialized_context.to_natural_language()
