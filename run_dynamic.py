@@ -20,7 +20,7 @@ def get_agent_class(agent_type: str) -> Type[Any]:
     """Get the agent class based on the type string."""
     if agent_type == "social_world_model":
         return CustomSocialWorldModelAgent
-    elif agent_type == "llm":
+    elif agent_type == "vanilla":
         return LLMAgent
     else:
         raise ValueError(f"Unknown agent type: {agent_type}")
@@ -63,15 +63,14 @@ def run_dynamic_benchmark(
 
     # If using CustomSocialWorldModelAgent, pass the social_world_model_name
     if agent_type == "social_world_model":
+        def __init__(self: Any, *args: Any, **kwargs: Any) -> None:
+            kwargs["social_world_model_name"] = social_world_model_name
+            super(CustomSocialWorldModelAgent, self).__init__(*args, **kwargs)
+        
         agent_class = type(
             "SocialWorldModelAgent",
             (CustomSocialWorldModelAgent,),
-            {
-                "__init__": lambda self, *args, **kwargs: (
-                    kwargs.update({"social_world_model_name": social_world_model_name}),
-                    super(CustomSocialWorldModelAgent, self).__init__(*args, **kwargs),
-                )
-            },
+            {"__init__": __init__}
         )
 
     benchmark(

@@ -1,5 +1,23 @@
 ### Date: 2025-04-17
 
+#### Sanity check 
+
+1. gpt-4.1-2025-04-14 as the social world model (remove the next social step format instructions)
+```bash
+uv run python run_dynamic.py --models "gpt-4.1-2025-04-14" --partner-model "gpt-4o-2024-08-06" --agent-type "social_world_model" --social-world-model-name "gpt-4.1-2025-04-14" --experiment-tag "social_world_model_trial_24_social_world_model_agent" --batch-size 100 --push-to-db --evaluator-model "o3-2025-04-16" --task "hard"
+```
+
+2. vanilla agent with gpt-4.1-2025-04-14
+```bash
+uv run python run_dynamic.py --models "gpt-4.1-2025-04-14" --partner-model "gpt-4o-2024-08-06" --agent-type "vanilla" --experiment-tag "social_world_model_trial_25_vanilla_agent" --batch-size 100 --push-to-db --evaluator-model "o3-2025-04-16" --task "hard"
+```
+
+
+#### (o1-2024-12-17 as the social world model)
+```bash
+uv run python run_dynamic.py --models "gpt-4.1-2025-04-14" --partner-model "gpt-4o-2024-08-06" --agent-type "social_world_model" --social-world-model-name "o1-2024-12-17" --experiment-tag "social_world_model_trial_23_social_world_model_agent" --batch-size 100 --push-to-db --evaluator-model "o3-2025-04-16" --task "hard"
+```
+
 #### (gpt-4.1-2025-04-14 as the social world model)
 ```bash
 uv run python run_dynamic.py --models "gpt-4.1-2025-04-14" --partner-model "gpt-4o-2024-08-06" --agent-type "social_world_model" --social-world-model-name "gpt-4.1-2025-04-14" --experiment-tag "social_world_model_trial_22_social_world_model_agent" --batch-size 100 --push-to-db --evaluator-model "o3-2025-04-16" --task "hard"
