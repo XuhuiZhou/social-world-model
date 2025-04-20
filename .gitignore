@@ -166,3 +166,5 @@ docs/node_modules/*
 redis-data/*
 
 hidden_utils/*
+
+./Experiments_doc.md
