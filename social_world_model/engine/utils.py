@@ -3,6 +3,7 @@ from social_world_model.database import (
     SocializedContextForModel,
     SocializedContext,
     SocialSimulation,
+    SocializedStructureForModel,
 )
 import json
 from pathlib import Path
@@ -96,3 +97,29 @@ def dictlize(d: SocializedContextForModel | dict[str, Any]) -> dict[str, Any]:
                         k, v = item.split(":", 1)
                         event[key][k.strip()] = v.strip()
     return {"agents_names": agents_names, "socialized_context": socialized_events}
+
+
+def dictlize_socialized_structure(
+    d: SocializedStructureForModel | dict[str, Any],
+) -> dict[str, Any]:
+    """Convert a SocializedStructureForModel or a dictionary into a dictionary format.
+
+    Args:
+        d: Input data that may be a SocializedStructureForModel or a dictionary
+
+    Returns:
+        Transformed dictionary with observations and actions in dictionary format
+    """
+    if isinstance(d, SocializedStructureForModel):
+        event = d.model_dump()
+    else:
+        event = d.copy()
+
+    for key, value in event.items():
+        if key in ["observations", "actions"] and isinstance(value, list):
+            event[key] = {}
+            for item in value:
+                if isinstance(item, str) and ":" in item:
+                    k, v = item.split(":", 1)
+                    event[key][k.strip()] = v.strip()
+    return event

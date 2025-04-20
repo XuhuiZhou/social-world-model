@@ -2227,7 +2227,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.21.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
-    { name = "sotopia", git = "https://github.com/sotopia-lab/sotopia?branch=main" },
+    { name = "sotopia", git = "https://github.com/sotopia-lab/sotopia?branch=feature%2Fbenchmark_with_customed_agents" },
 ]
 
 [package.metadata.requires-dev]
@@ -2246,7 +2246,7 @@ dev = [
 [[package]]
 name = "sotopia"
 version = "0.1.4"
-source = { git = "https://github.com/sotopia-lab/sotopia?branch=main#23ea384d22f2800d6bcb0dabeabad21299ef6829" }
+source = { git = "https://github.com/sotopia-lab/sotopia?branch=feature%2Fbenchmark_with_customed_agents#2215ebb6dd7d623fac57de16d0cb5dab5e4fbaa0" }
 dependencies = [
     { name = "aact" },
     { name = "absl-py" },

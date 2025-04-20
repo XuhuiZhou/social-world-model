@@ -377,7 +377,11 @@ class FantomEvalAgent:
         # Convert string results to boolean/float if needed
         if isinstance(df.result.iloc[0], str):
             df["result"] = df["result"].map(
-                lambda x: x == "True" if x.endswith("e") else float(x)
+                lambda x: x == "True"
+                if isinstance(x, str) and x.endswith("e")
+                else float(x)
+                if isinstance(x, (str, float, int))
+                else x
             )
 
         # Filter ToM questions and target scenario
@@ -538,7 +542,7 @@ class FantomEvalAgent:
             ].copy()
 
             belief_df["tom_order"] = belief_df["tom_type"].map(
-                lambda x: x.split(":")[0]
+                lambda x: x.split(":")[0] if isinstance(x, str) else x
             )
             df1 = belief_df.groupby("tom_order")["result"]  # type: ignore
             tom_order_results = df1.value_counts(normalize=True)
@@ -652,53 +656,14 @@ async def fantom_simulation(
         A dictionary containing the simulation results
     """
     assert engine is not None, "Engine must be provided"
-    # Get the socialized context from the engine
-    socialized_context = engine.existing_socialized_contexts[str(row["set_id"])]
-    agent_names = socialized_context.agents_names
-    # Extract character information from the question
-    question = row["complete_question"]
-    engine.set_agent_prompt(
-        "You are trying to figure out a theory of mind question based on a conversation you participated in. "
-        "At the end of the conversation, you will be asked a question about the conversation. "
-        "You may or may not join the whole conversation as indicated in your memory shown below. "
-        f"Here's the full conversation for your reference: {row['context']} "
-        "You can compare your memory below with the full conversation above to help you better answer the question. "
-        "First reason about the question and then respond with the following format: "
-        "<reasoning>(your step-by-step reasoning)</reasoning> <answer>(your final answer)</answer>"
-    )
-    all_reasoning = []
-    all_answers = []
-    # Initialize the simulation with the socialized context
-    await engine.initialize_simulation_from_socialized_context(socialized_context)
 
-    for agent_name in agent_names:
-        reasoning, answer = await engine.reason_about_belief(
-            question,
-            agent_names,
-            target_agent=agent_name,
-        )
-        all_reasoning.append(f"{agent_name}'s reasoning: {reasoning}")
-        all_answers.append(f"{agent_name}'s answer: {answer}")
-
-    combined_reasoning = "\n\n".join(all_reasoning)
-    combined_answer = "\n\n".join(all_answers)
-
-    # Create a summary of the reasoning process with agent attribution
-    reasoning = f"Based on individual questioning of each agent, the following agents indicated they know the answer to '{question}': None\n\n{combined_reasoning}"
-    answer = combined_answer
-    engine.simulation.reasoning = reasoning
-    engine.simulation.answer = answer
-    # Get the simulation state
-    simulation = engine.get_simulation()
-    simulation_dict = simulation.dict()
-    # Prepare the result
     result = {
-        "extra_info": socialized_context.to_natural_language()
+        "extra_info": ""
         + "\n\n"
-        + f"### Reasoning and answers from each agent participating in the conversation:\n{combined_reasoning}\n\n{combined_answer}. They are simulated agents with partial memory of the whole conversation (induced from the socialized context above), so the answers are subjective and not always correct. Please use them as extra information to help you answer the question.",
-        "memory": simulation_dict["agent_memories"],
-        "agents": simulation_dict["agents"],
-        "socialized_context": socialized_context,
+        + "### Reasoning and answers from each agent participating in the conversation. They are simulated agents with partial memory of the whole conversation (induced from the socialized context above), so the answers are subjective and not always correct. Please use them as extra information to help you answer the question.",
+        "memory": "",
+        "agents": "",
+        "socialized_context": "",
     }
     row["extra_info"] = result["extra_info"]
     row["memory"] = result["memory"]

@@ -1,16 +1,20 @@
 from typing import Dict, List, Tuple
 from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
-from social_world_model.agents import LLMAgent
 from social_world_model.database import (
     Observation,
     SocializedContext,
     SocializedContextForModel,
     SocializedStructure,
     SocialSimulation,
+    SocializedStructureForModel,
 )
 from sotopia.generation_utils import agenerate
-from social_world_model.engine import dictlize, GENERAL_GUIDELINES
+from social_world_model.engine import (
+    dictlize,
+    dictlize_socialized_structure,
+    GENERAL_GUIDELINES,
+)
 import json
 
 
@@ -65,7 +69,6 @@ class SocialWorldModel:
         self.task_specific_instructions = task_specific_instructions
         self.model_name = model_name
         self.temperature = temperature
-        self.agents: Dict[str, LLMAgent] = {}
         self.current_time = 0
         self.existing_socialized_contexts = existing_socialized_contexts
         self.existing_social_simulations = existing_social_simulations
@@ -73,28 +76,11 @@ class SocialWorldModel:
             agents=[], agent_memories={}, question="", reasoning="", answer=""
         )
 
-    def add_agent(self, name: str) -> None:
-        self.agents[name] = LLMAgent(
-            name, agent_prompt=self.agent_prompt, model_name=self.model_name
-        )
-
-    def reset_agents(self) -> None:
-        self.agents = {}
-        self.current_time = 0
-
     def set_task_specific_instructions(self, task_specific_instructions: str) -> None:
         self.task_specific_instructions = task_specific_instructions
 
     def set_agent_prompt(self, agent_prompt: str) -> None:
         self.agent_prompt = agent_prompt
-
-    def get_simulation(self) -> Simulation:
-        self.simulation.agents = list(self.agents.keys())
-        self.simulation.agent_memories = {
-            agent: [message.last_turn for message in self.agents[agent].message_history]
-            for agent in self.agents
-        }
-        return self.simulation
 
     async def distribute_observations(self, event: str) -> List[Tuple[str, List[str]]]:
         agent_memory = await agenerate(
@@ -115,30 +101,6 @@ class SocialWorldModel:
             agent_memory, ObsDistribution
         ), "Output parser did not return an ObsDistribution"
         return agent_memory.agents_per_observation
-
-    async def initialize_simulation(
-        self,
-        agent_names: list[str],
-        observations_with_perceivers: List[Tuple[str, List[str]]],
-    ) -> None:
-        for agent_name in agent_names:
-            self.add_agent(agent_name)
-        for obs, perceivers in observations_with_perceivers:
-            for agent in perceivers:
-                self.agents[agent].message_history.append(
-                    Observation(
-                        agent_name=agent,
-                        last_turn=obs,
-                        turn_number=self.current_time,
-                        available_actions=[
-                            "none",
-                            "speak",
-                            "non-verbal communication",
-                            "action",
-                            "leave",
-                        ],
-                    )
-                )
 
     async def decode_socialized_context(
         self, socialized_context: SocializedContext
@@ -197,106 +159,7 @@ class SocialWorldModel:
 
             # Add the decoded step to the new context
             decoded_context.socialized_context.append(decoded_step)
-
         return decoded_context
-
-    async def initialize_simulation_from_socialized_context(
-        self, socialized_context: SocializedContext
-    ) -> None:
-        """
-        Initialize simulation from a socialized context.
-
-        Args:
-            socialized_context: The socialized context to initialize from
-        """
-        decoded_socialized_context = await self.decode_socialized_context(
-            socialized_context
-        )
-        # Use the SocializedContext object directly
-        socialized_events = decoded_socialized_context.socialized_context
-        agent_names = decoded_socialized_context.agents_names
-
-        # Add agents
-        for agent_name in agent_names:
-            self.add_agent(agent_name)
-
-        # Process events
-        for step in socialized_events:
-            # Add observations to agent message history
-            for agent_name, observation in step.observations.items():
-                if observation == "none":
-                    continue
-                self.agents[agent_name].message_history.append(
-                    Observation(
-                        agent_name=agent_name,
-                        last_turn=observation,
-                        turn_number=step.timestep,
-                        available_actions=[
-                            "none",
-                            "speak",
-                            "non-verbal communication",
-                            "action",
-                            "leave",
-                        ],
-                    )
-                )
-
-    async def reason_about_belief(
-        self,
-        question: str,
-        agents: list[str],
-        target_agent: str | None = None,
-        answer_candidates: list[str] | None = None,
-    ) -> Tuple[str, str]:
-        if not target_agent:
-            formatted_question = await agenerate(
-                model_name=self.model_name,
-                template="Please reformat the following question: {question}. Change the question from third person perspective to a second person perspective as if an interviewer is asking the question. The question should be directed to one of the following agents: {agents}",
-                input_values={
-                    "question": question,
-                    "agents": agents,
-                },
-                temperature=0.3,
-                output_parser=PydanticOutputParser(pydantic_object=FormattedQuestion),
-            )
-            print(formatted_question)
-            target_agent = formatted_question.agent_name
-            question_observation = formatted_question.question_observation
-            if answer_candidates:
-                question_observation.last_turn += f"The question should be answered by one of the following candidates: {answer_candidates}"
-        else:
-            question_observation = Observation(
-                agent_name=target_agent,
-                last_turn=question,
-                turn_number=self.current_time,
-                available_actions=[
-                    "none",
-                    "speak",
-                    "non-verbal communication",
-                    "action",
-                    "leave",
-                ],
-            )
-            if answer_candidates:
-                question_observation.last_turn += f"The question should be answered by one of the following candidates: {answer_candidates}"
-        assert target_agent in self.agents, f"Agent {target_agent} not found in agents"
-        action = await self.agents[target_agent].aact(question_observation)
-        assert (
-            action is not None
-        ), f"Action is None for {question_observation.last_turn}"
-        reasoning_and_answer = action.argument
-        try:
-            reasoning = reasoning_and_answer.split("<reasoning>")[1].split(
-                "</reasoning>"
-            )[0]
-            answer = reasoning_and_answer.split("<answer>")[1].split("</answer>")[0]
-        except Exception:
-            reasoning = ""
-            answer = reasoning_and_answer
-        self.simulation.reasoning = reasoning
-        self.simulation.answer = answer
-        self.simulation.question = question
-        return reasoning, answer
 
     async def socialize_context(
         self,
@@ -493,3 +356,56 @@ class SocialWorldModel:
         )
         social_simulation.simulations.append(socialized_context)
         return social_simulation
+
+    async def simulate_one_step(
+        self, socialized_context: SocializedContext, additional_instructions: str = ""
+    ) -> SocializedContext:
+        """
+        Simulates one step of the social simulation.
+
+        Args:
+            socialized_context: The current socialized context to simulate from
+
+        Returns:
+            A new SocializedContext with one additional step
+        """
+        # Create template for generating next step using the entire context
+        template = (
+            "Based on the entire social context history, generate the next step in the social simulation.\n\n"
+            "Current context history:\n{context_history}\n\n"
+            "Generate the next step.\n"
+        )
+        if additional_instructions:
+            template += f"Additional instructions: {additional_instructions}\n\n"
+
+        template += (
+            "The next step should follow the given format: {format_instructions}"
+        )
+
+        # Format the context history for the template
+        context_history = socialized_context.to_natural_language()
+
+        # Generate next step
+        next_step = await agenerate(
+            model_name=self.model_name,
+            template=template,
+            input_values={
+                "context_history": context_history,
+            },
+            temperature=self.temperature,
+            output_parser=PydanticOutputParser(
+                pydantic_object=SocializedStructureForModel
+            ),
+            structured_output=True,
+        )
+
+        # Convert the next step to the correct format using dictlize_socialized_structure
+        next_step_dict = dictlize_socialized_structure(next_step)
+
+        new_socialized_context_dict = socialized_context.model_dump()
+        new_socialized_context_dict["socialized_context"].append(next_step_dict)
+
+        # Create new socialized context with the additional step
+        new_context = SocializedContext(**new_socialized_context_dict)
+
+        return new_context
