@@ -98,7 +98,7 @@ if __name__ == "__main__":
         'overall_score': (2.990000000000001, 0.12012382179421675),
         'setting_num': (20.0, 0.0),
         'episode_count': (100.0, 0.0)
-    },  
+    },
 ```
 
 #### Vanilla agent with gpt-4.1-2025-04-14

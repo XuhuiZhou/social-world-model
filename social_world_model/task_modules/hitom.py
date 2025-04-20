@@ -2,7 +2,6 @@ import re
 import pandas as pd
 from social_world_model.social_world_model import SocialWorldModel
 from typing import Any, Optional
-from copy import deepcopy
 
 HITOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the HITOM scenarios. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
 

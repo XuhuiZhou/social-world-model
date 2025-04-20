@@ -7,10 +7,9 @@ from social_world_model.social_world_model import SocialWorldModel
 from typing import Optional
 import logging
 from pydantic import validate_call
-from sotopia.messages import ActionType, Message
+from sotopia.messages import ActionType
 from rich.logging import RichHandler
 from sotopia.generation_utils.output_parsers import PydanticOutputParser
-from pydantic import Field
 
 # Configure logger
 log = logging.getLogger("social_world_model.agent")
@@ -28,6 +27,7 @@ console_handler.setFormatter(formatter)
 
 # Add handler to logger
 log.addHandler(console_handler)
+
 
 @validate_call
 async def agenerate_refined_action(
@@ -84,6 +84,7 @@ async def agenerate_refined_action(
         log.warning(f"Failed to generate refined action due to {e}")
         return AgentAction(action_type="none", argument="")
 
+
 class SocialWorldModelAgent(LLMAgent):
     def __init__(
         self,
@@ -111,54 +112,89 @@ class SocialWorldModelAgent(LLMAgent):
         self.engine = SocialWorldModel(model_name=social_world_model_name)
         self.additional_instructions = f"Please additionally add the <mental_state> </mental_state> of each agent in their observations reacting to {self.agent_name}'s action. More specifically, first, fill in the social goal of the agents in the <mental_state> </mental_state>. IMPORTANT: 1. the social goal of {self.agent_name} should be the same with their original goal. 2. each agent should act turn by turn. 3. Be dramatic and emotional."
         self.last_socialized_context_step: Optional[SocializedStructure] = None
-    
-    async def predict_socialized_context(self, obs: Observation, action: AgentAction) -> SocializedContext:
+
+    async def predict_socialized_context(
+        self, obs: Observation, action: AgentAction
+    ) -> SocializedContext:
         """
         Updates the socialized context based on the current observation and action.
-        
+
         Args:
             obs: The current observation
             action: The current action taken by the agent
-            
+
         Returns:
             Updated socialized context
         """
         if self.socialized_context.socialized_context == []:
             first_obs_content = obs.last_turn
             try:
-                extracted_names = first_obs_content.split("Participants: ")[1].split("\n")[0].split("and ")
+                extracted_names = (
+                    first_obs_content.split("Participants: ")[1]
+                    .split("\n")[0]
+                    .split("and ")
+                )
                 extracted_names = [x.strip() for x in extracted_names]
                 assert self.agent_name in extracted_names
-                self.socialized_context.agents_names = [extracted_names[0], extracted_names[1]]
-                self.partner_name = extracted_names[1-extracted_names.index(self.agent_name)]
-            except Exception as e:
+                self.socialized_context.agents_names = [
+                    extracted_names[0],
+                    extracted_names[1],
+                ]
+                self.partner_name = extracted_names[
+                    1 - extracted_names.index(self.agent_name)
+                ]
+            except Exception:
                 pass
-            
+
             current_step = SocializedStructure(
                 timestep=str(obs.turn_number),
                 state="none",
-                observations={self.agent_name: obs.to_natural_language(), self.partner_name: "<unknown />"},
-                actions={self.agent_name: "none", self.partner_name: "<same_as_next_state />"} if action.action_type == "none" else {self.agent_name: action.to_natural_language(), self.partner_name: "none"}
+                observations={
+                    self.agent_name: obs.to_natural_language(),
+                    self.partner_name: "<unknown />",
+                },
+                actions={
+                    self.agent_name: "none",
+                    self.partner_name: "<same_as_next_state />",
+                }
+                if action.action_type == "none"
+                else {
+                    self.agent_name: action.to_natural_language(),
+                    self.partner_name: "none",
+                },
             )
         else:
             current_step = SocializedStructure(
                 timestep=str(obs.turn_number),
                 state=obs.to_natural_language(),
-                observations={self.agent_name: "<same_as_state />", self.partner_name: "<same_as_state />"},
-                actions={self.agent_name: "none", self.partner_name: "<same_as_next_state />"} if action.action_type == "none" else {self.agent_name: action.to_natural_language(), self.partner_name: "none"}
+                observations={
+                    self.agent_name: "<same_as_state />",
+                    self.partner_name: "<same_as_state />",
+                },
+                actions={
+                    self.agent_name: "none",
+                    self.partner_name: "<same_as_next_state />",
+                }
+                if action.action_type == "none"
+                else {
+                    self.agent_name: action.to_natural_language(),
+                    self.partner_name: "none",
+                },
             )
 
         self.socialized_context.socialized_context.append(current_step)
         if action.action_type != "none":
-            socialized_context = await self.engine.simulate_one_step(self.socialized_context, self.additional_instructions)
+            socialized_context = await self.engine.simulate_one_step(
+                self.socialized_context, self.additional_instructions
+            )
             self.socialized_context = socialized_context
         return self.socialized_context
-    
+
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
             none_action = AgentAction(action_type="none", argument="")
-            #await self.predict_socialized_context(obs, none_action)
+            # await self.predict_socialized_context(obs, none_action)
             return none_action
         else:
             action = await agenerate_action(
@@ -172,8 +208,12 @@ class SocialWorldModelAgent(LLMAgent):
             )
             assert isinstance(action, AgentAction)
             try:
-                next_socialized_context = await self.predict_socialized_context(obs, action)
-                self.last_socialized_context_step = next_socialized_context.socialized_context[-1]
+                next_socialized_context = await self.predict_socialized_context(
+                    obs, action
+                )
+                self.last_socialized_context_step = (
+                    next_socialized_context.socialized_context[-1]
+                )
             except Exception as e:
                 logging.warning(f"Error predicting socialized context: {e}")
                 return action
@@ -183,7 +223,7 @@ class SocialWorldModelAgent(LLMAgent):
 """
             refined_action = await agenerate_refined_action(
                 self.model_name,
-                history=f"\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
+                history="\n".join(f"{y.to_natural_language()}" for x, y in self.inbox),
                 intended_action=action.to_natural_language(),
                 socialized_context_info=socialized_context_info,
                 turn_number=obs.turn_number,
