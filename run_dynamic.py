@@ -63,14 +63,15 @@ def run_dynamic_benchmark(
 
     # If using CustomSocialWorldModelAgent, pass the social_world_model_name
     if agent_type == "social_world_model":
+
         def __init__(self: Any, *args: Any, **kwargs: Any) -> None:
             kwargs["social_world_model_name"] = social_world_model_name
             super(CustomSocialWorldModelAgent, self).__init__(*args, **kwargs)
-        
+
         agent_class = type(
             "SocialWorldModelAgent",
             (CustomSocialWorldModelAgent,),
-            {"__init__": __init__}
+            {"__init__": __init__},
         )
 
     benchmark(
