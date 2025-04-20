@@ -373,6 +373,8 @@ class SocialWorldModel:
         )
         if additional_instructions:
             template += f"Additional instructions: {additional_instructions}\n\n"
+        
+        template += "The next step should follow the given format: {format_instructions}"
 
         # Format the context history for the template
         context_history = socialized_context.to_natural_language()
