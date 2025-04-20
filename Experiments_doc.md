@@ -1,4 +1,106 @@
 ### Date: 2025-04-17
+
+#### (gpt-4.1-2025-04-14 as the social world model)
+```bash
+uv run python run_dynamic.py --models "gpt-4.1-2025-04-14" --partner-model "gpt-4o-2024-08-06" --agent-type "social_world_model" --social-world-model-name "gpt-4.1-2025-04-14" --experiment-tag "social_world_model_trial_22_social_world_model_agent" --batch-size 100 --push-to-db --evaluator-model "o3-2025-04-16" --task "hard"
+```
+
+#### (gpt-4.1-2025-04-14 as the social world model)
+```python
+if __name__ == "__main__":
+    benchmark(
+        models=[
+            "gpt-4.1-2025-04-14",
+        ],
+        partner_model="gpt-4o-2024-08-06",
+        agent_class=SocialWorldModelAgent,
+        tag="social_world_model_trial_21_social_world_model_agent",
+        batch_size=100,
+        push_to_db=True,
+        evaluator_model="o3-2025-04-16",
+        task="hard",
+    )
+```
+
+```bash
+    'gpt-4.1-2025-04-14 (test) o3-2025-04-16 as the evaluator': {
+        'believability': (8.49, 0.09316471131625303),
+        'relationship': (2.27, 0.15691667476472326),
+        'knowledge': (3.05, 0.17628965427401846),
+        'secret': (-0.4, 0.20372442082172657),
+        'social_rules': (-0.53, 0.09928547623516916),
+        'financial_and_material_benefits': (0.85, 0.2438421370003651),
+        'goal': (5.89, 0.4114023093834762),
+        'overall_score': (2.802857142857144, 0.10318589550453262),
+        'setting_num': (20.0, 0.0),
+        'episode_count': (100.0, 0.0)
+    },
+```
+
+#### Vanilla setting again
+```python
+if __name__ == "__main__":
+    benchmark(
+        models=[
+            "gpt-4.1-2025-04-14",
+        ],
+        partner_model="gpt-4o-2024-08-06",
+        agent_class=LLMAgent,
+        tag="social_world_model_trial_20_llm_agent",
+        batch_size=100,
+        push_to_db=True,
+        evaluator_model="o3-2025-04-16",
+        task="hard",
+    )
+```
+```bash
+{
+    'gpt-4.1-2025-04-14 (test) o3-2025-04-16 as the evaluator': {
+        'believability': (8.53, 0.09612442592708294),
+        'relationship': (2.11, 0.16851156607072063),
+        'knowledge': (2.98, 0.1477624028508127),
+        'secret': (-0.14, 0.11899779377043286),
+        'social_rules': (-0.3, 0.06887660372486616),
+        'financial_and_material_benefits': (0.97, 0.21148828218803928),
+        'goal': (5.53, 0.37103459954897744),
+        'overall_score': (2.8114285714285727, 0.09570257295597835),
+        'setting_num': (20.0, 0.0),
+        'episode_count': (100.0, 0.0)
+    },
+}
+```
+
+#### Same setting (o1-2024-12-17 as the social world model)
+```python
+if __name__ == "__main__":
+    benchmark(
+        models=[
+            "gpt-4.1-2025-04-14",
+        ],
+        partner_model="gpt-4o-2024-08-06",
+        agent_class=SocialWorldModelAgent,
+        tag="social_world_model_trial_19_social_world_model_agent",
+        batch_size=100,
+        push_to_db=True,
+        evaluator_model="o3-2025-04-16",
+        task="hard",
+    )
+```
+```bash
+    'gpt-4.1-2025-04-14 (test) o3-2025-04-16 as the evaluator': {
+        'believability': (8.6, 0.09210142664205294),
+        'relationship': (2.19, 0.15733175249038656),
+        'knowledge': (3.05, 0.15423966921286156),
+        'secret': (-0.39, 0.2549879298715988),
+        'social_rules': (-0.55, 0.14431169989670878),
+        'financial_and_material_benefits': (1.21, 0.24139309428362055),
+        'goal': (6.82, 0.43439906714103577),
+        'overall_score': (2.990000000000001, 0.12012382179421675),
+        'setting_num': (20.0, 0.0),
+        'episode_count': (100.0, 0.0)
+    },  
+```
+
 #### Vanilla agent with gpt-4.1-2025-04-14
 ```python
 if __name__ == "__main__":
