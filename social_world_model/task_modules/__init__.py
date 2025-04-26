@@ -40,6 +40,14 @@ from .hitom import (
     reformat_hitom_data,
 )
 
+from .flawfictions import (
+    flawfictions_simulation,
+    prepare_flawfictions_vanilla,
+    create_flawfictions_result,
+    flawfictions_evaluation_report,
+    FLAWFICTIONS_SOCIALIZED_CONTEXT_PROMPT,
+)
+
 __all__ = [
     "tomi_simulation",
     "prepare_tomi_vanilla",
@@ -70,4 +78,9 @@ __all__ = [
     "hitom_evaluation_report",
     "HITOM_SOCIALIZED_CONTEXT_PROMPT",
     "reformat_hitom_data",
+    "flawfictions_simulation",
+    "prepare_flawfictions_vanilla",
+    "create_flawfictions_result",
+    "flawfictions_evaluation_report",
+    "FLAWFICTIONS_SOCIALIZED_CONTEXT_PROMPT",
 ]

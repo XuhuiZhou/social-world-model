@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 FLAWFICTIONS_SOCIALIZED_CONTEXT_PROMPT = """You are given a narrative folk-tale and must generate a sequence of socialized context steps that precisely capture character interactions, observations, and evolving world states.
 
-If you detect anything weird such as a continuity error about an event or internal attitude that contradicts earlier established facts, flag it inside the relevant agent’s <mental_state> tag."""
+If you detect anything weird such as a continuity error about an event or internal attitude that contradicts earlier established facts, you should flag it inside the relevant agent’s <mental_state> tag."""
 
 
 def reformat_flawfictions_data(data_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
