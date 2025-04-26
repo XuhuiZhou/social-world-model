@@ -493,7 +493,7 @@ class FantomEvalAgent:
         ):
             list_wrong = target_df[
                 (target_df["question_type"] == "tom:answerability:list")
-                & (not target_df["result"])
+                & (~target_df["result"])
             ][["excluded_aware_character", "included_unaware_character"]].copy()
 
             list_wrong["both"] = (
@@ -520,7 +520,7 @@ class FantomEvalAgent:
             binary_wrong = (
                 target_df[
                     (target_df["question_type"].str.endswith(":binary"))
-                    & (not target_df["result"])
+                    & (~target_df["result"])
                 ]["binarized_model_answer"]
                 .value_counts(normalize=False)
                 .to_dict()
