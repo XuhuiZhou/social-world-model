@@ -375,7 +375,7 @@ def run_benchmark(
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
-            "hitom": "./data/hitom_data/processed_hitom_data.csv",
+            "hitom": "./data/hitom_data/processed_hitom_data100.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -448,7 +448,7 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_contexts_{context_model}_{dataset_name}"
+                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}"
             ),
             "identifier_key": (
                 "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None
