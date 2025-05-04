@@ -17,18 +17,22 @@ from social_world_model.task_modules import (
     flatten_fantom_data,
     confaide_simulation,
     hitom_simulation,
+    exploretom_simulation,
     prepare_tomi_vanilla,
     prepare_fantom_vanilla,
     prepare_confaide_vanilla,
     prepare_hitom_vanilla,
+    prepare_exploretom_vanilla,
     create_tomi_result,
     create_fantom_result,
     create_confaide_result,
     create_hitom_result,
+    create_exploretom_result,
     tomi_evaluation_report,
     fantom_evaluation_report,
     confaide_evaluation_report,
     hitom_evaluation_report,
+    exploretom_evaluation_report,
     TOMI_SOCIALIZED_CONTEXT_PROMPT,
     FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
@@ -38,6 +42,7 @@ from social_world_model.task_modules import (
     create_cobra_frames_result,
     cobra_frames_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    EXPLOREToM_SOCIALIZED_CONTEXT_PROMPT,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -63,13 +68,16 @@ ModeType = Literal[
 ]
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
+BenchmarkType = Literal[
+    "tomi", "fantom", "confaide", "cobra_frames", "hitom", "exploretom"
+]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
+    "exploretom": EXPLOREToM_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 
@@ -79,13 +87,16 @@ class ToMBenchmarkRunner:
         model_name: str = "gpt-4-mini",
         dataset_name: str = "tomi",
         existing_socialized_contexts_path: Optional[dict[str, Any]] = None,
+        mode: str = "vanilla",
     ):
         self.model_name = model_name
         self.dataset_name = dataset_name
         self.existing_socialized_contexts: dict[str, SocializedContext] = {}
         self.existing_social_simulations: dict[str, SocialSimulation] = {}
-        if existing_socialized_contexts_path and os.path.exists(
-            existing_socialized_contexts_path["data_path"]
+        if (
+            existing_socialized_contexts_path
+            and os.path.exists(existing_socialized_contexts_path["data_path"])
+            and mode != "vanilla"
         ):
             self.existing_socialized_contexts, self.existing_social_simulations = (
                 load_existing_socialized_contexts(
@@ -93,6 +104,10 @@ class ToMBenchmarkRunner:
                     existing_socialized_contexts_path["identifier_key"],
                 )
             )
+
+        self.existing_socialized_contexts = {
+            str(k): v for k, v in self.existing_socialized_contexts.items()
+        }
 
     async def run_single_experiment(
         self,
@@ -112,7 +127,8 @@ class ToMBenchmarkRunner:
         )
 
         save_dir = Path(
-            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
+            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}_o3-2025-04-16"
+            # f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
         )
         result_path = save_dir / f"{row['index']}.json"
 
@@ -164,6 +180,8 @@ class ToMBenchmarkRunner:
             template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "hitom":
             template, input_values = prepare_hitom_vanilla(row, pure_context)
+        elif benchmark_type == "exploretom":
+            template, input_values = prepare_exploretom_vanilla(row, pure_context)
         # Generate response
         response = await agenerate(
             model_name=self.model_name,
@@ -189,6 +207,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = self._parse_response(response, row)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "exploretom":
+            parsed_result = self._parse_response(response, row)
+            result = await create_exploretom_result(parsed_result, row)
         return result
 
     async def _run_socialized_context(
@@ -210,7 +231,7 @@ class ToMBenchmarkRunner:
 
         if benchmark_type == "tomi":
             context = " ".join(eval(row["story"]))
-        elif benchmark_type == "hitom":
+        elif benchmark_type in ["hitom", "exploretom"]:
             context = row["story"]
         else:
             context = row["context"]
@@ -226,11 +247,13 @@ class ToMBenchmarkRunner:
                 "fantom",
                 "confaide",
                 "hitom",
+                "exploretom",
             ]
         ):  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
+                # import pdb; pdb.set_trace()
                 socialized_context = await engine.socialize_context(
                     context, example_analysis, critic_and_improve=critic_and_improve
                 )
@@ -239,6 +262,7 @@ class ToMBenchmarkRunner:
             if row["index"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
+                # import pdb; pdb.set_trace()
                 socialized_context = await engine.socialize_context(
                     context, example_analysis, critic_and_improve=critic_and_improve
                 )
@@ -276,6 +300,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = await hitom_simulation(row, engine)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "exploretom":
+            parsed_result = await exploretom_simulation(row, engine)
+            result = create_exploretom_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -343,7 +370,7 @@ def validate_context_mode(value: str) -> str:
 def run_benchmark(
     benchmark_type: str = typer.Argument(
         ...,
-        help="Type of benchmark to run (tomi/fantom/confaide/hitom)",
+        help="Type of benchmark to run (tomi/fantom/confaide/hitom/exploretom)",
         callback=validate_benchmark_type,
     ),
     dataset_path: Optional[str] = None,
@@ -376,6 +403,7 @@ def run_benchmark(
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data100.csv",
+            "exploretom": "./data/exploretom_data/ExploreToM-data-sample-100.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -386,6 +414,7 @@ def run_benchmark(
             data["index"] = data["index"].astype(str)
         if "set_id" in data.columns:
             data["set_id"] = data["set_id"].astype(str)
+
     except Exception as e:
         # Load jsonl file for fantom and confaide datasets
         if dataset_path.endswith(".jsonl"):
@@ -411,7 +440,7 @@ def run_benchmark(
             data["set_id"] = data["set_id"].astype(str)
     if mode == "generate_socialized_context":
         # For fantom and confaide, select a subset of unique set_ids
-        if benchmark_type in ["fantom", "confaide", "hitom"]:
+        if benchmark_type in ["fantom", "confaide", "hitom", "exploretom"]:
             data = data.groupby("set_id").head(1).reset_index(drop=True)
             mode = "socialized_context"
     asyncio.run(
@@ -448,12 +477,16 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}"
+                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}_o3-2025-04-16"
+                # f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}"
             ),
             "identifier_key": (
-                "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None
+                "set_id"
+                if benchmark_type in ["fantom", "confaide", "hitom", "exploretom"]
+                else None
             ),
         },
+        mode=mode,
     )
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
     all_results = []
@@ -502,6 +535,8 @@ async def _run_benchmark(
         cobra_frames_evaluation_report(all_results)
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
+    elif benchmark_type == "exploretom":
+        exploretom_evaluation_report(all_results)
 
 
 if __name__ == "__main__":
