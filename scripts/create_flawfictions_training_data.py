@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out_train_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_train.json",
+        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_train.jsonl",
     )
     parser.add_argument(
         "--out_test_data_path",
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--example_analysis_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/social_contexts_example/flawfictions.jsonl",
+        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/social_contexts_example/flawfictions.json",
     )
     args = parser.parse_args()
 
@@ -100,11 +100,17 @@ if __name__ == "__main__":
 
         if item["split"] == "train":
             training_data.append(
-                {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
+                {
+                    "messages": messages
+                    + [{"role": "assistant", "content": socialized_context}]
+                }
             )
         else:
             test_data.append(
-                {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
+                {
+                    "messages": messages
+                    + [{"role": "assistant", "content": socialized_context}]
+                }
             )
 
     # full_data = json.load(open("flawed_fictions_for_training.json", 'r'))
