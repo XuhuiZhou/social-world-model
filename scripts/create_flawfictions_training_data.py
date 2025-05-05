@@ -7,37 +7,32 @@ if __name__ == "__main__":
     parser.add_argument(
         "--test_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions100_seed0.json",
+        default="./data/flawedfictions/flawedfictions_data/flawed_fictions100_seed0.json",
     )
     parser.add_argument(
         "--full_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions.json",
+        default="./data/flawedfictions/flawedfictions_data/flawed_fictions.json",
     )
     parser.add_argument(
         "--full_output_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawfictions_results/socialized_context_o3-2025-04-16_flawed_fictions.json_o3-2025-04-16/",
+        default="./data/flawedfictions/flawfictions_results/socialized_context_o3-2025-04-16_flawed_fictions.json_o3-2025-04-16/",
     )
     parser.add_argument(
         "--out_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_for_training.json",
+        default="./data/flawedfictions/flawedfictions_data/flawed_fictions_for_training.json",
     )
     parser.add_argument(
         "--out_train_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_train.json",
+        default="./data/flawedfictions/flawedfictions_data/flawed_fictions_train.jsonl",
     )
     parser.add_argument(
         "--out_test_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_test.jsonl",
-    )
-    parser.add_argument(
-        "--example_analysis_path",
-        type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/social_contexts_example/flawfictions.jsonl",
+        default="./data/flawedfictions/flawedfictions_data/flawed_fictions_test.jsonl",
     )
     args = parser.parse_args()
 
@@ -78,7 +73,6 @@ if __name__ == "__main__":
     test_data = []
     for item in res_data:
         context = item["story"]
-        example_analysis = str(json.load(open(args.example_analysis_path, "r")))
         template = (
             "Please analyze the following narrative/context.\n\n"
             "#### Context: {context}\n\n"
@@ -96,8 +90,10 @@ if __name__ == "__main__":
             template = template.replace(f"{{{key}}}", str(value))
         messages = [{"role": "user", "content": template}]
 
-        socialized_context = str(item["socialized_context"])
-
+        socialized_context = item["socialized_context"]
+        if "context_manual" in socialized_context:
+            del socialized_context["context_manual"]
+        socialized_context = str(socialized_context)
         if item["split"] == "train":
             training_data.append(
                 {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
@@ -106,7 +102,6 @@ if __name__ == "__main__":
             test_data.append(
                 {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
             )
-
     # full_data = json.load(open("flawed_fictions_for_training.json", 'r'))
     with open(args.out_train_data_path, "w") as f:
         for item in training_data:
