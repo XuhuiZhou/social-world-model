@@ -96,11 +96,17 @@ if __name__ == "__main__":
         socialized_context = str(socialized_context)
         if item["split"] == "train":
             training_data.append(
-                {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
+                {
+                    "messages": messages
+                    + [{"role": "assistant", "content": socialized_context}]
+                }
             )
         else:
             test_data.append(
-                {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
+                {
+                    "messages": messages
+                    + [{"role": "assistant", "content": socialized_context}]
+                }
             )
     # full_data = json.load(open("flawed_fictions_for_training.json", 'r'))
     with open(args.out_train_data_path, "w") as f:
