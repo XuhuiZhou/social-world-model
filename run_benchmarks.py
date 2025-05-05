@@ -123,7 +123,7 @@ class ToMBenchmarkRunner:
         )
 
         save_dir = Path(
-            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}_o3-2025-04-16"
+            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
         )
         result_path = save_dir / f"{row['index']}.json"
 
@@ -439,8 +439,6 @@ def run_benchmark(
                 data_list = json.load(f)
                 data = pd.DataFrame(data_list)
 
-                # data = data[data["index"].isin([260, 7, 123, 272, 243, 280, 46, 252, 158, 361, 266, 278, 48])]
-
         else:
             raise ValueError(f"Data set in a different format: {e}")
         if "set_id" in data.columns:
@@ -484,7 +482,7 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}_o3-2025-04-16"
+                f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}"
             ),
             "identifier_key": (
                 "set_id"
