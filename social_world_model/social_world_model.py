@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
 from social_world_model.database import (
@@ -14,6 +14,7 @@ from social_world_model.engine import (
     dictlize,
     dictlize_socialized_structure,
     GENERAL_GUIDELINES,
+    standardize_agent_names,
 )
 import json
 
@@ -401,11 +402,15 @@ class SocialWorldModel:
 
         # Convert the next step to the correct format using dictlize_socialized_structure
         next_step_dict = dictlize_socialized_structure(next_step)
+        agents_names = socialized_context.agents_names
+
+        next_step_dict, updated_agents_names = standardize_agent_names(
+            next_step_dict, agents_names
+        )
 
         new_socialized_context_dict = socialized_context.model_dump()
         new_socialized_context_dict["socialized_context"].append(next_step_dict)
-
+        new_socialized_context_dict["agents_names"] = updated_agents_names
         # Create new socialized context with the additional step
         new_context = SocializedContext(**new_socialized_context_dict)
-
         return new_context
