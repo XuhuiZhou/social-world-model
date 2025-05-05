@@ -32,12 +32,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out_test_data_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_test.json",
+        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/flawedfictions_data/flawed_fictions_test.jsonl",
     )
     parser.add_argument(
         "--example_analysis_path",
         type=str,
-        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/social_contexts_example/flawfictions.json",
+        default="/data/jiarui_liu/social_reasoning_rl/social-world-model/data/social_contexts_example/flawfictions.jsonl",
     )
     args = parser.parse_args()
 
@@ -82,17 +82,11 @@ if __name__ == "__main__":
         template = (
             "Please analyze the following narrative/context.\n\n"
             "#### Context: {context}\n\n"
-            f"Use the following ground truth explanation about continuity errors as subtle guidance when generating mental states for the socialized context. You may incorporate relevant insights into characters' perspectives or reactions, but avoid stating the explanation directly.\n\n#### Ground truth explanation about continuity error (if any): {item['cont_error_expl']}\n\n"
         )
-
         input_values = {"context": context}
-        task_specific_instructions = """You are given a narrative folk-tale and must generate a sequence of socialized context steps that precisely capture character interactions, observations, and evolving world states.
-
-    If you detect anything weird such as a continuity error about an event or internal attitude that contradicts earlier established facts, you should flag it inside the relevant agent’s <mental_state> tag."""
+        task_specific_instructions = """You are given a narrative folk-tale and must generate a sequence of socialized context steps that precisely capture character interactions, observations, and evolving world states."""
         template += "#### Task specific instructions: {task_specific_instructions}\n\n"
         input_values["task_specific_instructions"] = task_specific_instructions
-        template += "Example analysis: {example_analysis}\n\n"
-        input_values["example_analysis"] = example_analysis
         template += "Follow these format instructions:\n{format_instructions}"
         input_values["format_instructions"] = (
             SocializedContextForModel.model_json_schema()
@@ -105,14 +99,20 @@ if __name__ == "__main__":
         socialized_context = str(item["socialized_context"])
 
         if item["split"] == "train":
-            training_data.append({"input": messages, "output": socialized_context})
+            training_data.append(
+                {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
+            )
         else:
-            test_data.append({"input": messages, "output": socialized_context})
+            test_data.append(
+                {"messages": messages + [{"role": "assistant", "content": socialized_context}]}
+            )
 
     # full_data = json.load(open("flawed_fictions_for_training.json", 'r'))
     with open(args.out_train_data_path, "w") as f:
-        json.dump(training_data, f, ensure_ascii=False, indent=2)
+        for item in training_data:
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
         f.flush()
     with open(args.out_test_data_path, "w") as f:
-        json.dump(test_data, f, ensure_ascii=False, indent=2)
+        for item in test_data:
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
         f.flush()
