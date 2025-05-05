@@ -302,7 +302,7 @@ class ToMBenchmarkRunner:
             result = create_hitom_result(parsed_result, row)
         elif benchmark_type == "exploretom":
             parsed_result = await exploretom_simulation(row, engine)
-            result = create_exploretom_result(parsed_result, row)
+            result = await create_exploretom_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:

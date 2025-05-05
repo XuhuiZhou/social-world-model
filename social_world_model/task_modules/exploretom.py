@@ -119,7 +119,7 @@ def exploretom_evaluation_report(results: list[dict[str, Any]]) -> None:
     )
 
 
-def exploretom_simulation(
+async def exploretom_simulation(
     row: dict[str, Any], engine: Optional[SocialWorldModel] = None
 ) -> dict[str, Any]:
-    pass
+    return {}
