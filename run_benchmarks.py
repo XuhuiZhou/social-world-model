@@ -123,7 +123,7 @@ class ToMBenchmarkRunner:
         )
 
         save_dir = Path(
-            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
+            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}_o3-2025-04-16"
         )
         result_path = save_dir / f"{row['index']}.json"
 
@@ -484,7 +484,7 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}"
+                f"data/{benchmark_type}_results/{mode}_{context_model}_{dataset_name}_o3-2025-04-16"
             ),
             "identifier_key": (
                 "set_id"
