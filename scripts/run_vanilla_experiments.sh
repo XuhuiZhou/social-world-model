@@ -29,17 +29,17 @@ mkdir -p "logs/${EXPERIMENT_BATCH}"
 run_experiment() {
     local agent_model=$1
     local experiment_num=$2
-    
+
     # Create a unique tag for this experiment
     local tag="vanilla_agent_trial_${experiment_num}_${agent_model//[^a-zA-Z0-9]/_}"
-    
+
     # Log file for this experiment
     local log_file="logs/${EXPERIMENT_BATCH}/${tag}.log"
-    
+
     echo "Running experiment ${experiment_num}:"
     echo "Agent Model: ${agent_model}"
     echo "Log file: ${log_file}"
-    
+
     # Run the experiment and log the output
     uv run python run_dynamic.py \
         --models "${agent_model}" \
@@ -51,7 +51,7 @@ run_experiment() {
         --evaluator-model "${EVALUATOR_MODEL}" \
         --task "${TASK}" \
         2>&1 | tee "${log_file}"
-    
+
     # Add a separator between experiments
     echo "----------------------------------------"
 }
@@ -63,4 +63,4 @@ for agent_model in "${AGENT_MODELS[@]}"; do
     experiment_num=$((experiment_num + 1))
 done
 
-echo "All experiments completed. Results are in logs/${EXPERIMENT_BATCH}/" 
+echo "All experiments completed. Results are in logs/${EXPERIMENT_BATCH}/"

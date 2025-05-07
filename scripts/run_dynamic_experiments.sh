@@ -38,18 +38,18 @@ run_experiment() {
     local agent_model=$1
     local social_world_model=$2
     local experiment_num=$3
-    
+
     # Create a unique tag for this experiment
     local tag="social_world_model_trial_${experiment_num}_${agent_model//[^a-zA-Z0-9]/_}_${social_world_model//[^a-zA-Z0-9]/_}"
-    
+
     # Log file for this experiment
     local log_file="logs/${EXPERIMENT_BATCH}/${tag}.log"
-    
+
     echo "Running experiment ${experiment_num}:"
     echo "Agent Model: ${agent_model}"
     echo "Social World Model: ${social_world_model}"
     echo "Log file: ${log_file}"
-    
+
     # Run the experiment and log the output
     uv run python run_dynamic.py \
         --models "${agent_model}" \
@@ -62,10 +62,10 @@ run_experiment() {
         --evaluator-model "${EVALUATOR_MODEL}" \
         --task "${TASK}" \
         2>&1 | tee "${log_file}"
-    
+
     # Append social world model name to the log file
     echo "Social World Model: ${social_world_model}" >> "${log_file}"
-    
+
     # Add a separator between experiments
     echo "----------------------------------------"
 }
@@ -79,4 +79,4 @@ for agent_model in "${AGENT_MODELS[@]}"; do
     done
 done
 
-echo "All experiments completed. Results are in logs/${EXPERIMENT_BATCH}/" 
+echo "All experiments completed. Results are in logs/${EXPERIMENT_BATCH}/"

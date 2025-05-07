@@ -128,14 +128,16 @@ def dictlize_socialized_structure(
     return event
 
 
-def find_best_match(name: str, candidates: List[str], threshold: float = 0.7) -> Optional[str]:
+def find_best_match(
+    name: str, candidates: List[str], threshold: float = 0.7
+) -> Optional[str]:
     """Find the best matching name from a list of candidates using string similarity.
-    
+
     Args:
         name: The name to match
         candidates: List of candidate names to match against
         threshold: Minimum similarity score to consider a match (default: 0.7)
-        
+
     Returns:
         The best matching name if found, None otherwise
     """
@@ -150,17 +152,17 @@ def find_best_match(name: str, candidates: List[str], threshold: float = 0.7) ->
 
 
 def standardize_agent_names(
-    data: dict[str, Any], 
-    agents_names: List[str], 
-    fields: List[str] = ["observations", "actions"]
+    data: dict[str, Any],
+    agents_names: List[str],
+    fields: List[str] = ["observations", "actions"],
 ) -> tuple[dict[str, Any], List[str]]:
     """Standardize agent names in a dictionary using fuzzy matching.
-    
+
     Args:
         data: Dictionary containing agent names to standardize
         agents_names: List of canonical agent names
         fields: List of fields in data to process (default: ["observations", "actions"])
-        
+
     Returns:
         Tuple of (standardized data, updated list of agent names)
     """

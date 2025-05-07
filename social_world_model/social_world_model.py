@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
 from social_world_model.database import (
