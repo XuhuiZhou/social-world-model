@@ -80,6 +80,8 @@ SocializedContextPrompt = {
     "flawfictions": FLAWFICTIONS_SOCIALIZED_CONTEXT_PROMPT,
 }
 
+MAX_RETRIES = 10
+
 
 class ToMBenchmarkRunner:
     def __init__(
@@ -88,9 +90,11 @@ class ToMBenchmarkRunner:
         dataset_name: str = "tomi",
         existing_socialized_contexts_path: Optional[dict[str, Any]] = None,
         mode: str = "vanilla",
+        context_model: str = "o1-2024-12-17",
     ):
         self.model_name = model_name
         self.dataset_name = dataset_name
+        self.context_model = context_model
         self.existing_socialized_contexts: dict[str, SocializedContext] = {}
         self.existing_social_simulations: dict[str, SocialSimulation] = {}
         if (
@@ -122,9 +126,14 @@ class ToMBenchmarkRunner:
             existing_social_simulations=self.existing_social_simulations,
         )
 
-        save_dir = Path(
-            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
-        )
+        if mode == "vanilla":
+            save_dir = Path(
+                f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
+            )
+        else:
+            save_dir = Path(
+                f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}_{self.context_model}"
+            )
         result_path = save_dir / f"{row['index']}.json"
 
         # Check for cached results if in continue mode
@@ -178,14 +187,26 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "flawfictions":
             template, input_values = prepare_flawfictions_vanilla(row, pure_context)
         # Generate response
-        response = await agenerate(
-            model_name=self.model_name,
-            template=template,
-            input_values=input_values,
-            temperature=0.0,
-            output_parser=StrOutputParser(),
-            structured_output=False,
-        )
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                response = await agenerate(
+                    model_name=self.model_name,
+                    template=template,
+                    input_values=input_values,
+                    temperature=0.0,
+                    output_parser=StrOutputParser(),
+                    structured_output=False,
+                )
+                break
+            except Exception as e:
+                print(
+                    f"Error in generating response for index {row['index']} on attempt {attempt}: {e}"
+                )
+                if attempt == MAX_RETRIES:
+                    response = ""
+                else:
+                    print("Retrying generating response...")
+
         # Parse response and create result
         if benchmark_type == "tomi":
             parsed_result = self._parse_response(response, row)
@@ -268,9 +289,28 @@ class ToMBenchmarkRunner:
             if row["index"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
-                socialized_context = await engine.socialize_context(
-                    context, example_analysis, critic_and_improve=critic_and_improve
-                )
+                # import pdb; pdb.set_trace()
+                for attempt in range(1, MAX_RETRIES + 1):
+                    try:
+                        socialized_context = await engine.socialize_context(
+                            context,
+                            example_analysis,
+                            critic_and_improve=critic_and_improve,
+                        )
+                        break
+                    except Exception as e:
+                        print(
+                            f"Error in socializing context for index {row['index']} on attempt {attempt}: {e}"
+                        )
+                        if attempt == MAX_RETRIES:
+                            socialized_context = SocializedContext(
+                                agents_names=[],
+                                socialized_context=[],
+                                context_manual="",
+                            )
+                        else:
+                            print("Retrying socializing context...")
+
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
         row["extra_info"] = socialized_context.to_natural_language()
@@ -482,7 +522,7 @@ async def _run_benchmark(
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}"
+                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}_{context_model}"
             ),
             "identifier_key": (
                 "set_id"
@@ -491,6 +531,7 @@ async def _run_benchmark(
             ),
         },
         mode=mode,
+        context_model=context_model,
     )
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
     all_results = []
