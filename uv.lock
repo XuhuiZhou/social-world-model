@@ -2393,7 +2393,7 @@ dev = [
 [[package]]
 name = "sotopia"
 version = "0.1.4"
-source = { git = "https://github.com/sotopia-lab/sotopia?branch=feature%2Fbenchmark_with_customed_agents#02f7b8729e98c6daa97aafa03e4d60dcb3fce670" }
+source = { git = "https://github.com/sotopia-lab/sotopia?branch=feature%2Fbenchmark_with_customed_agents#d85867062c02e958a9f557296c96aab8608d8166" }
 dependencies = [
     { name = "aact" },
     { name = "absl-py" },
