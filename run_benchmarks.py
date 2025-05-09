@@ -454,6 +454,7 @@ def run_benchmark(
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
+        # data = data.head(10)
         # Ensure index is string
         if "index" in data.columns:
             data["index"] = data["index"].astype(str)
@@ -517,12 +518,35 @@ async def _run_benchmark(
     example_analysis_file: str = "",
 ) -> None:
     """Async implementation of benchmark runner."""
+
+    target_model = context_model
+    for models in [
+        "o1-2024-12-17",
+        "o3-2025-04-16",
+        "gpt-4o-2024-08-06",
+        "gpt-4.1-2025-04-14",
+        "o3-mini-2025-01-31",
+        "together_ai/deepseek-ai/DeepSeek-R1",
+        "together_ai/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    ]:
+        cnt = 0
+        if os.path.exists(
+            f"data/{benchmark_type}_results/socialized_context_{models}_{dataset_name}_{context_model}"
+        ):
+            for file in os.listdir(
+                f"data/{benchmark_type}_results/socialized_context_{models}_{dataset_name}_{context_model}"
+            ):
+                cnt += 1
+            if cnt == 600:
+                target_model = models
+                break
+
     runner = ToMBenchmarkRunner(
         model_name,
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}_{context_model}"
+                f"data/{benchmark_type}_results/socialized_context_{target_model}_{dataset_name}_{context_model}"
             ),
             "identifier_key": (
                 "set_id"

@@ -8,6 +8,7 @@ from social_world_model.database import (
     SocializedStructure,
     SocialSimulation,
     SocializedStructureForModel,
+    AgentAction,
 )
 from sotopia.generation_utils import agenerate
 from social_world_model.engine import (
@@ -16,6 +17,78 @@ from social_world_model.engine import (
     GENERAL_GUIDELINES,
 )
 import json
+import re
+
+
+def extract_int_from_timestep(timestep: str) -> int:
+    match = re.search(r"-?\d+", timestep)
+    if match:
+        return int(match.group())
+    else:
+        raise ValueError(f"No integer found in timestep: {timestep}")
+
+
+class LLMAgent:
+    def __init__(
+        self,
+        agent_name: str,
+        input_channels: list[str] = ["observation"],
+        output_channel: str = "action",
+        query_interval: int = 0,
+        node_name: str = "llm_agent",
+        agent_prompt: str = "",
+        model_name: str = "gpt-4o",
+        redis_url: str = "redis://localhost:6379/0",
+    ):
+        # super().__init__(
+        #     [(input_channel, Observation) for input_channel in input_channels],
+        #     [(output_channel, AgentAction)],
+        #     redis_url,
+        #     node_name,
+        # )
+        self.output_channel = output_channel
+        self.query_interval = query_interval
+        self.count_ticks = 0
+        self.message_history: list[Observation] = []
+        self.name = agent_name
+        self.model_name = model_name
+        self.agent_prompt = agent_prompt + " " if agent_prompt else ""
+
+    def _format_message_history(self, message_history: list[Observation]) -> str:
+        ## TODO: akhatua Fix the mapping of action to be gramatically correct
+        return "\n".join(message.to_natural_language() for message in message_history)
+
+    async def aact(self, obs: Observation) -> AgentAction:
+        if obs.turn_number == -1:
+            return AgentAction(
+                agent_name=self.name,
+                output_channel=self.output_channel,
+                action_type="none",
+                argument=self.model_name,
+            )
+
+        self.message_history.append(obs)
+
+        history = self._format_message_history(self.message_history)
+        action: str = await agenerate(
+            model_name=self.model_name,
+            template="Imagine that you are {agent_name} in the scenario. {agent_prompt}\n[**Your own memory (i.e., {agent_name}'s own memory) of the interaction**]:\n"
+            "{message_history}\n",
+            input_values={
+                "message_history": history,
+                "agent_name": self.name,
+                "agent_prompt": self.agent_prompt,
+            },
+            temperature=0.0,
+            output_parser=StrOutputParser(),
+        )
+
+        return AgentAction(
+            agent_name=self.name,
+            output_channel=self.output_channel,
+            action_type="speak",
+            argument=action,
+        )
 
 
 class ObsDistribution(BaseModel):
@@ -69,6 +142,7 @@ class SocialWorldModel:
         self.task_specific_instructions = task_specific_instructions
         self.model_name = model_name
         self.temperature = temperature
+        self.agents: Dict[str, LLMAgent] = {}
         self.current_time = 0
         self.existing_socialized_contexts = existing_socialized_contexts
         self.existing_social_simulations = existing_social_simulations
@@ -409,3 +483,118 @@ class SocialWorldModel:
         new_context = SocializedContext(**new_socialized_context_dict)
 
         return new_context
+
+    def add_agent(self, name: str) -> None:
+        self.agents[name] = LLMAgent(
+            name, agent_prompt=self.agent_prompt, model_name=self.model_name
+        )
+
+    def reset_agents(self) -> None:
+        self.agents = {}
+        self.current_time = 0
+
+    async def initialize_simulation_from_socialized_context(
+        self, socialized_context: SocializedContext
+    ) -> None:
+        """
+        Initialize simulation from a socialized context.
+
+        Args:
+            socialized_context: The socialized context to initialize from
+        """
+        decoded_socialized_context = await self.decode_socialized_context(
+            socialized_context
+        )
+        # Use the SocializedContext object directly
+        socialized_events = decoded_socialized_context.socialized_context
+        agent_names = decoded_socialized_context.agents_names
+
+        # Add agents
+        for agent_name in agent_names:
+            self.add_agent(agent_name)
+
+        # Process events
+        for step in socialized_events:
+            # Add observations to agent message history
+            for agent_name, observation in step.observations.items():
+                if observation == "none":
+                    continue
+                self.agents[agent_name].message_history.append(
+                    Observation(
+                        agent_name=agent_name,
+                        last_turn=observation,
+                        turn_number=extract_int_from_timestep(step.timestep),
+                        available_actions=[
+                            "none",
+                            "speak",
+                            "non-verbal communication",
+                            "action",
+                            "leave",
+                        ],
+                    )
+                )
+
+    async def reason_about_belief(
+        self,
+        question: str,
+        agents: list[str],
+        target_agent: str | None = None,
+        answer_candidates: list[str] | None = None,
+    ) -> Tuple[str, str]:
+        if not target_agent:
+            formatted_question = await agenerate(
+                model_name=self.model_name,
+                template="Please reformat the following question: {question}. Change the question from third person perspective to a second person perspective as if an interviewer is asking the question. The question should be directed to one of the following agents: {agents}",
+                input_values={
+                    "question": question,
+                    "agents": agents,
+                },
+                temperature=0.3,
+                output_parser=PydanticOutputParser(pydantic_object=FormattedQuestion),
+            )
+            print(formatted_question)
+            target_agent = formatted_question.agent_name
+            question_observation = formatted_question.question_observation
+            if answer_candidates:
+                question_observation.last_turn += f"The question should be answered by one of the following candidates: {answer_candidates}"
+        else:
+            question_observation = Observation(
+                agent_name=target_agent,
+                last_turn=question,
+                turn_number=self.current_time,
+                available_actions=[
+                    "none",
+                    "speak",
+                    "non-verbal communication",
+                    "action",
+                    "leave",
+                ],
+            )
+            if answer_candidates:
+                question_observation.last_turn += f"The question should be answered by one of the following candidates: {answer_candidates}"
+        assert target_agent in self.agents, f"Agent {target_agent} not found in agents"
+        action = await self.agents[target_agent].aact(question_observation)
+        assert (
+            action is not None
+        ), f"Action is None for {question_observation.last_turn}"
+        reasoning_and_answer = action.argument
+        try:
+            reasoning = reasoning_and_answer.split("<reasoning>")[1].split(
+                "</reasoning>"
+            )[0]
+            answer = reasoning_and_answer.split("<answer>")[1].split("</answer>")[0]
+        except Exception:
+            reasoning = ""
+            answer = reasoning_and_answer
+        self.simulation.reasoning = reasoning
+        self.simulation.answer = answer
+        self.simulation.question = question
+        return reasoning, answer
+
+    def get_simulation(self) -> Simulation:
+        self.simulation.agents = list(self.agents.keys())
+        self.simulation.agent_memories = {
+            agent: [message.last_turn for message in self.agents[agent].message_history]
+            for agent in self.agents
+        }
+        return self.simulation
