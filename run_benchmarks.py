@@ -1,6 +1,5 @@
 # Run the benchmarks for the TOM dataset
 import os
-import glob
 import pandas as pd
 from rich import print
 import json
@@ -503,7 +502,6 @@ async def _run_benchmark(
 ) -> None:
     """Async implementation of benchmark runner."""
 
-    target_model = context_model
     runner = ToMBenchmarkRunner(
         model_name,
         dataset_name=dataset_name,

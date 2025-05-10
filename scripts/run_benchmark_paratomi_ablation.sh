@@ -32,7 +32,7 @@ run_experiment() {
     local mode=$3
 
     echo "Running $BENCHMARK benchmark with model=$model, context_model=$context_model, mode=$mode"
-    
+
     python run_benchmarks.py $BENCHMARK \
         --model-name "$model" \
         --context-model "$context_model" \
