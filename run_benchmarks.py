@@ -1,5 +1,6 @@
 # Run the benchmarks for the TOM dataset
 import os
+import glob
 import pandas as pd
 from rich import print
 import json
@@ -72,6 +73,8 @@ SocializedContextPrompt = {
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
 }
 
+MAX_RETRIES = 10
+
 
 class ToMBenchmarkRunner:
     def __init__(
@@ -79,13 +82,18 @@ class ToMBenchmarkRunner:
         model_name: str = "gpt-4-mini",
         dataset_name: str = "tomi",
         existing_socialized_contexts_path: Optional[dict[str, Any]] = None,
+        mode: str = "vanilla",
+        context_model: str = "o1-2024-12-17",
     ):
         self.model_name = model_name
         self.dataset_name = dataset_name
+        self.context_model = context_model
         self.existing_socialized_contexts: dict[str, SocializedContext] = {}
         self.existing_social_simulations: dict[str, SocialSimulation] = {}
-        if existing_socialized_contexts_path and os.path.exists(
-            existing_socialized_contexts_path["data_path"]
+        if (
+            existing_socialized_contexts_path
+            and os.path.exists(existing_socialized_contexts_path["data_path"])
+            and mode != "vanilla"
         ):
             self.existing_socialized_contexts, self.existing_social_simulations = (
                 load_existing_socialized_contexts(
@@ -106,14 +114,19 @@ class ToMBenchmarkRunner:
         """Run a single experiment for either ToMi or FANToM benchmark."""
         # Define result path regardless of continue mode
         engine = SocialWorldModel(
-            model_name=self.model_name,
+            model_name=self.context_model,
             existing_socialized_contexts=self.existing_socialized_contexts,
             existing_social_simulations=self.existing_social_simulations,
         )
 
-        save_dir = Path(
-            f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
-        )
+        if mode == "vanilla":
+            save_dir = Path(
+                f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}"
+            )
+        else:
+            save_dir = Path(
+                f"data/{benchmark_type}_results/{mode}_{self.model_name}_{self.dataset_name}_{self.context_model}"
+            )
         result_path = save_dir / f"{row['index']}.json"
 
         # Check for cached results if in continue mode
@@ -165,14 +178,26 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             template, input_values = prepare_hitom_vanilla(row, pure_context)
         # Generate response
-        response = await agenerate(
-            model_name=self.model_name,
-            template=template,
-            input_values=input_values,
-            temperature=0.0,
-            output_parser=StrOutputParser(),
-            structured_output=False,
-        )
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                response = await agenerate(
+                    model_name=self.model_name,
+                    template=template,
+                    input_values=input_values,
+                    temperature=0.0,
+                    output_parser=StrOutputParser(),
+                    structured_output=False,
+                )
+                break
+            except Exception as e:
+                print(
+                    f"Error in generating response for index {row['index']} on attempt {attempt}: {e}"
+                )
+                if attempt == MAX_RETRIES:
+                    response = ""
+                else:
+                    print("Retrying generating response...")
+
         # Parse response and create result
         if benchmark_type == "tomi":
             parsed_result = self._parse_response(response, row)
@@ -231,17 +256,51 @@ class ToMBenchmarkRunner:
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
-                socialized_context = await engine.socialize_context(
-                    context, example_analysis, critic_and_improve=critic_and_improve
-                )
+                for attempt in range(1, MAX_RETRIES + 1):
+                    try:
+                        socialized_context = await engine.socialize_context(
+                            context,
+                            example_analysis,
+                            critic_and_improve=critic_and_improve,
+                        )
+                        break
+                    except Exception as e:
+                        print(
+                            f"Error in socializing context for index {row['index']} on attempt {attempt}: {e}"
+                        )
+                        if attempt == MAX_RETRIES:
+                            socialized_context = SocializedContext(
+                                agents_names=[],
+                                socialized_context=[],
+                                context_manual="",
+                            )
+                        else:
+                            print("Retrying socializing context...")
                 engine.existing_socialized_contexts[row["set_id"]] = socialized_context
         else:
             if row["index"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["index"]]
             else:
-                socialized_context = await engine.socialize_context(
-                    context, example_analysis, critic_and_improve=critic_and_improve
-                )
+                for attempt in range(1, MAX_RETRIES + 1):
+                    try:
+                        socialized_context = await engine.socialize_context(
+                            context,
+                            example_analysis,
+                            critic_and_improve=critic_and_improve,
+                        )
+                        break
+                    except Exception as e:
+                        print(
+                            f"Error in socializing context for index {row['index']} on attempt {attempt}: {e}"
+                        )
+                        if attempt == MAX_RETRIES:
+                            socialized_context = SocializedContext(
+                                agents_names=[],
+                                socialized_context=[],
+                                context_manual="",
+                            )
+                        else:
+                            print("Retrying socializing context...")
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
         row["extra_info"] = socialized_context.to_natural_language()
@@ -443,17 +502,34 @@ async def _run_benchmark(
     example_analysis_file: str = "",
 ) -> None:
     """Async implementation of benchmark runner."""
+
+    target_model = context_model
+    if benchmark_type == "tomi":
+        prefix = f"data/{benchmark_type}_results/socialized_context_"
+        suffix = f"_{dataset_name}_{context_model}"
+
+        pattern = f"{prefix}*{suffix}"
+
+        for path in glob.glob(pattern):
+            cnt = len(os.listdir(path))
+            if cnt == 600:
+                model = path.replace(prefix, "").replace(suffix, "")
+                target_model = model
+                break
+
     runner = ToMBenchmarkRunner(
         model_name,
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}"
+                f"data/{benchmark_type}_results/socialized_context_{target_model}_{dataset_name}_{context_model}"
             ),
             "identifier_key": (
                 "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None
             ),
         },
+        mode=mode,
+        context_model=context_model,
     )
     print(f"Running {benchmark_type.upper()} benchmark with {len(data)} examples")
     all_results = []
