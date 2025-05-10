@@ -13,7 +13,8 @@ dependencies = [
     "sotopia==0.1.2",
     "pandas>=2.1.0",
     "jsonlines>=4.0.0",
-    "python-Levenshtein>=0.23.0",
+    "matplotlib>=3.10.3",
+    "seaborn>=0.13.2",
 ]
 
 [build-system]

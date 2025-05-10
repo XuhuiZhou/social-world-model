@@ -21,7 +21,7 @@ mkdir -p "logs/${EXPERIMENT_BATCH}"
 run_experiment() {
     local agent_type=$1
     local tag_prefix=$2
-    
+
     # Create a unique tag for this experiment
     local tag="${tag_prefix}_${AGENT_MODEL//[^a-zA-Z0-9]/_}"
     if [ "$agent_type" = "social_world_model" ]; then
@@ -60,4 +60,4 @@ run_experiment "social_world_model" "competitive_social_world_model_trial"
 # Run vanilla agent experiment
 run_experiment "vanilla" "competitive_vanilla_trial"
 
-echo "All experiments completed. Results are in logs/${EXPERIMENT_BATCH}/" 
+echo "All experiments completed. Results are in logs/${EXPERIMENT_BATCH}/"
