@@ -131,7 +131,8 @@ class AgentAction(BaseModel):
     agent_name: str = Field(description="the name of the agent")
     output_channel: str = Field(description="the name of the output channel")
     action_type: ActionType = Field(
-        description="whether to speak at this turn or choose to not do anything"
+        description="whether to speak at this turn or choose to not do anything",
+        pattern="^(none|speak|non-verbal communication|action|leave)$",
     )
     argument: str = Field(
         description="the utterance if choose to speak, the expression or gesture if choose non-verbal communication, or the physical action if choose action"

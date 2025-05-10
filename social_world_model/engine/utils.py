@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List, Optional
 from social_world_model.database import (
     SocializedContextForModel,
     SocializedContext,
@@ -7,6 +7,7 @@ from social_world_model.database import (
 )
 import json
 from pathlib import Path
+from difflib import SequenceMatcher
 
 
 GENERAL_GUIDELINES = """
@@ -122,4 +123,59 @@ def dictlize_socialized_structure(
                 if isinstance(item, str) and ":" in item:
                     k, v = item.split(":", 1)
                     event[key][k.strip()] = v.strip()
+                else:
+                    event[key]["X"] = item
     return event
+
+
+def find_best_match(
+    name: str, candidates: List[str], threshold: float = 0.7
+) -> Optional[str]:
+    """Find the best matching name from a list of candidates using string similarity.
+
+    Args:
+        name: The name to match
+        candidates: List of candidate names to match against
+        threshold: Minimum similarity score to consider a match (default: 0.7)
+
+    Returns:
+        The best matching name if found, None otherwise
+    """
+    best_match = None
+    best_score = 0.0
+    for candidate in candidates:
+        score = SequenceMatcher(None, name.lower(), candidate.lower()).ratio()
+        if score > best_score and score >= threshold:
+            best_score = score
+            best_match = candidate
+    return best_match
+
+
+def standardize_agent_names(
+    data: dict[str, Any],
+    agents_names: List[str],
+    fields: List[str] = ["observations", "actions"],
+) -> tuple[dict[str, Any], List[str]]:
+    """Standardize agent names in a dictionary using fuzzy matching.
+
+    Args:
+        data: Dictionary containing agent names to standardize
+        agents_names: List of canonical agent names
+        fields: List of fields in data to process (default: ["observations", "actions"])
+
+    Returns:
+        Tuple of (standardized data, updated list of agent names)
+    """
+    for field in fields:
+        if field in data:
+            for key in list(data[field].keys()):
+                if key not in agents_names:
+                    best_match = find_best_match(key, agents_names)
+                    if best_match:
+                        data[field][best_match] = data[field].pop(key)
+                    else:
+                        agents_names.append(key)
+        for agent_name in agents_names:
+            if agent_name not in data[field]:
+                data[field][agent_name] = "none"
+    return data, agents_names

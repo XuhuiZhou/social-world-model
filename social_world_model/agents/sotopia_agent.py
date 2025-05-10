@@ -52,7 +52,7 @@ async def agenerate_refined_action(
             Here is your intended action:
             {intended_action}
 
-            Here is the predicted mental states and reactions after you take the intended action (you should use them to generate better actions for achieving your goal):
+            Here is the predicted mental states after you take the intended action (you should use them to generate better actions for achieving your goal):
             {socialized_context_info}
 
             Please generate a refined action so that you can achieve your (i.e., {agent}'s) goal better.
@@ -144,7 +144,8 @@ class SocialWorldModelAgent(LLMAgent):
                     1 - extracted_names.index(self.agent_name)
                 ]
             except Exception:
-                pass
+                self.socialized_context.agents_names = [self.agent_name, "X"]
+                self.partner_name = "X"
 
             current_step = SocializedStructure(
                 timestep=str(obs.turn_number),
@@ -220,7 +221,6 @@ class SocialWorldModelAgent(LLMAgent):
             # Regenerate the action based on the imagined last socialized context step
             socialized_context_info = f"""- Your ({self.agent_name}'s) mental state: {self.last_socialized_context_step.observations[self.agent_name].replace("<same_as_state />", "")}
 - Other agent's mental state: {self.last_socialized_context_step.observations[self.partner_name].replace("<same_as_state />", "")}
-- Other agent's reaction: {self.last_socialized_context_step.actions[self.partner_name].replace("<same_as_next_state />", "")}
 """
             refined_action = await agenerate_refined_action(
                 self.model_name,
