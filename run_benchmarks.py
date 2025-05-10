@@ -504,25 +504,12 @@ async def _run_benchmark(
     """Async implementation of benchmark runner."""
 
     target_model = context_model
-    if benchmark_type == "tomi":
-        prefix = f"data/{benchmark_type}_results/socialized_context_"
-        suffix = f"_{dataset_name}_{context_model}"
-
-        pattern = f"{prefix}*{suffix}"
-
-        for path in glob.glob(pattern):
-            cnt = len(os.listdir(path))
-            if cnt == 600:
-                model = path.replace(prefix, "").replace(suffix, "")
-                target_model = model
-                break
-
     runner = ToMBenchmarkRunner(
         model_name,
         dataset_name=dataset_name,
         existing_socialized_contexts_path={
             "data_path": Path(
-                f"data/{benchmark_type}_results/socialized_context_{target_model}_{dataset_name}_{context_model}"
+                f"data/{benchmark_type}_results/socialized_context_{context_model}_{dataset_name}_{context_model}"
             ),
             "identifier_key": (
                 "set_id" if benchmark_type in ["fantom", "confaide", "hitom"] else None
