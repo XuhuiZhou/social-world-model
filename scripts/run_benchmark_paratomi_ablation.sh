@@ -46,7 +46,7 @@ for context_model in "${CONTEXT_MODELS[@]}"; do
     echo "Generating socialized contexts for $BENCHMARK with context model $context_model"
 
     if [[ "$context_model" == *"together_ai"* ]]; then
-        export OPENAI_API_KEY="<your_together_api_key>"
+        export TOGETHER_API_KEY="<your_together_api_key>"
     else
         export OPENAI_API_KEY="<your_openai_api_key>"
     fi
@@ -64,7 +64,7 @@ done
 for model in "${TASK_MODELS[@]}"; do
     for context_model in "${CONTEXT_MODELS[@]}"; do
         if [[ "$model" == *"together_ai"* ]]; then
-            export OPENAI_API_KEY="<your_together_api_key>"
+            export TOGETHER_API_KEY="<your_together_api_key>"
         else
             export OPENAI_API_KEY="<your_openai_api_key>"
         fi
