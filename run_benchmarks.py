@@ -471,7 +471,7 @@ def run_benchmark(
         # For fantom and confaide, select a subset of unique set_ids
         if benchmark_type in ["fantom", "confaide", "hitom"]:
             data = data.groupby("set_id").head(1).reset_index(drop=True)
-            mode = "socialized_context"
+        mode = "socialized_context"
     asyncio.run(
         _run_benchmark(
             benchmark_type=benchmark_type,

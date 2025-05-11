@@ -33,7 +33,7 @@ run_experiment() {
 
     echo "Running $BENCHMARK benchmark with model=$model, context_model=$context_model, mode=$mode"
 
-    python run_benchmarks.py $BENCHMARK \
+    uv run python run_benchmarks.py $BENCHMARK \
         --model-name "$model" \
         --context-model "$context_model" \
         --mode "$mode" \
@@ -44,18 +44,31 @@ run_experiment() {
 # First, generate socialized contexts for all context models
 for context_model in "${CONTEXT_MODELS[@]}"; do
     echo "Generating socialized contexts for $BENCHMARK with context model $context_model"
-    python run_benchmarks.py $BENCHMARK \
+
+    if [[ "$context_model" == *"together_ai"* ]]; then
+        export OPENAI_API_KEY="<your_together_api_key>"
+    else
+        export OPENAI_API_KEY="<your_openai_api_key>"
+    fi
+
+    uv run python run_benchmarks.py $BENCHMARK \
         --model-name "$context_model" \
         --context-model "$context_model" \
-        --mode "generate_socialized_context" \
+        --mode "socialized_context" \
         --continue-mode "continue" \
         --batch-size 100 \
-        --example_analysis_file "data/social_contexts_example/tomi.json"
+        --example-analysis-file "data/social_contexts_example/tomi.json"
 done
 
 # Then run the full matrix of experiments
 for model in "${TASK_MODELS[@]}"; do
     for context_model in "${CONTEXT_MODELS[@]}"; do
+        if [[ "$model" == *"together_ai"* ]]; then
+            export OPENAI_API_KEY="<your_together_api_key>"
+        else
+            export OPENAI_API_KEY="<your_openai_api_key>"
+        fi
+
         # Run socialized context mode
         run_experiment "$model" "$context_model" "socialized_context"
     done
