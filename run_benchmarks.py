@@ -63,13 +63,14 @@ ModeType = Literal[
 ]
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
+BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom", "ori_tomi"]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
+    "ori_tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 MAX_RETRIES = 10
@@ -166,7 +167,7 @@ class ToMBenchmarkRunner:
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
-        if benchmark_type == "tomi":
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             template, input_values = prepare_tomi_vanilla(row, pure_context)
         elif benchmark_type == "fantom":  # fantom
             template, input_values = prepare_fantom_vanilla(row, pure_context)
@@ -198,7 +199,7 @@ class ToMBenchmarkRunner:
                     print("Retrying generating response...")
 
         # Parse response and create result
-        if benchmark_type == "tomi":
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             parsed_result = self._parse_response(response, row)
             result = create_tomi_result(parsed_result, row)
         elif benchmark_type == "fantom":
@@ -232,7 +233,7 @@ class ToMBenchmarkRunner:
         else:
             critic_and_improve = False
 
-        if benchmark_type == "tomi":
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             context = " ".join(eval(row["story"]))
         elif benchmark_type == "hitom":
             context = row["story"]
@@ -317,7 +318,7 @@ class ToMBenchmarkRunner:
             engine, SocialWorldModel
         ), "Engine must be an instance of ToMEngine"
         engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
-        if benchmark_type == "tomi":
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             assert (
                 str(row["index"]) in engine.existing_socialized_contexts
             ), f"Socialized context for index {row['index']} not found"
@@ -434,6 +435,7 @@ def run_benchmark(
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data100.csv",
+            "ori_tomi": "./data/Percept-ToMi.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -553,7 +555,7 @@ async def _run_benchmark(
         all_results.extend(results)
 
     # Final evaluation report
-    if benchmark_type == "tomi":
+    if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
         tomi_evaluation_report(all_results)
     elif benchmark_type == "fantom":
         fantom_evaluation_report(all_results)
