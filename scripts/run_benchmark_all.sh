@@ -48,7 +48,7 @@ run_experiment() {
 # Run each benchmark
 for benchmark in "${BENCHMARKS[@]}"; do
     echo "Processing benchmark: $benchmark"
-    
+
     # First, generate socialized contexts
     echo "Generating socialized contexts for $benchmark with context model $CONTEXT_MODEL"
 
@@ -72,4 +72,4 @@ for benchmark in "${BENCHMARKS[@]}"; do
         run_experiment "$benchmark" "$model" "vanilla"
         run_experiment "$benchmark" "$model" "socialized_context"
     done
-done 
+done
