@@ -40,6 +40,14 @@ from .hitom import (
     reformat_hitom_data,
 )
 
+from .diamonds import (
+    diamonds_simulation,
+    prepare_diamonds_vanilla,
+    create_diamonds_result,
+    diamonds_evaluation_report,
+    DIAMONDS_SOCIALIZED_CONTEXT_PROMPT,
+)
+
 __all__ = [
     "tomi_simulation",
     "prepare_tomi_vanilla",
@@ -70,4 +78,9 @@ __all__ = [
     "hitom_evaluation_report",
     "HITOM_SOCIALIZED_CONTEXT_PROMPT",
     "reformat_hitom_data",
+    "diamonds_simulation",
+    "prepare_diamonds_vanilla",
+    "create_diamonds_result",
+    "diamonds_evaluation_report",
+    "DIAMONDS_SOCIALIZED_CONTEXT_PROMPT",
 ]

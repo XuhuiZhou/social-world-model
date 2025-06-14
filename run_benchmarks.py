@@ -63,13 +63,14 @@ ModeType = Literal[
 ]
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
+BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom", "diamonds"]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
+    "diamonds": DIAMONDS_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 MAX_RETRIES = 10
@@ -176,6 +177,8 @@ class ToMBenchmarkRunner:
             template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "hitom":
             template, input_values = prepare_hitom_vanilla(row, pure_context)
+        elif benchmark_type == "diamonds":
+            template, input_values = prepare_diamonds_vanilla(row, pure_context)
         # Generate response
         for attempt in range(1, MAX_RETRIES + 1):
             try:
@@ -213,6 +216,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = self._parse_response(response, row)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "diamonds":
+            parsed_result = self._parse_response(response, row)
+            result = create_diamonds_result(parsed_result, row)
         return result
 
     async def _run_socialized_context(
@@ -334,6 +340,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = await hitom_simulation(row, engine)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "diamonds":
+            parsed_result = await diamonds_simulation(row, engine)
+            result = create_diamonds_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -401,7 +410,7 @@ def validate_context_mode(value: str) -> str:
 def run_benchmark(
     benchmark_type: str = typer.Argument(
         ...,
-        help="Type of benchmark to run (tomi/fantom/confaide/hitom)",
+        help="Type of benchmark to run (tomi/fantom/confaide/hitom/cobra_frames/diamonds)",
         callback=validate_benchmark_type,
     ),
     dataset_path: Optional[str] = None,
@@ -434,6 +443,7 @@ def run_benchmark(
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data100.csv",
+            "diamonds": "./data/diamonds/diamonds_data.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -563,6 +573,92 @@ async def _run_benchmark(
         cobra_frames_evaluation_report(all_results)
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
+    elif benchmark_type == "diamonds":
+        diamonds_evaluation_report(all_results)
+
+
+@app.command()
+def run_diamonds(
+    dataset_path: str = typer.Option(
+        "./data/diamonds/diamonds_data.csv",
+        help="Path to the DIAMONDs dataset",
+    ),
+    batch_size: int = 4,
+    save: bool = True,
+    model_name: str = "o1-2024-12-17",
+    mode: str = typer.Option(
+        "vanilla",
+        help="Mode to run in (vanilla/socialized_context/pure_context/simulation/generate_socialized_context)",
+        callback=validate_mode,
+    ),
+    continue_mode: str = typer.Option(
+        "new",
+        help="Whether to continue from existing results (new/continue)",
+        callback=validate_continue_mode,
+    ),
+    example_analysis_file: str = typer.Option(
+        "", help="Path to the example analysis file"
+    ),
+    context_model: str = typer.Option(
+        "o1-2024-12-17",
+        help="Model to use for context generation",
+    ),
+) -> None:
+    """Run DIAMONDs benchmark experiments."""
+    # Prepare the dataset if it doesn't exist
+    if not os.path.exists(dataset_path):
+        print(f"Dataset {dataset_path} not found. Preparing DIAMONDs dataset...")
+        from scripts.prepare_diamonds_data import prepare_diamonds_data
+        prepare_diamonds_data()
+    
+    # Run the benchmark
+    benchmark_type = "diamonds"
+    dataset_name = dataset_path.split("/")[-1]
+    
+    try:
+        data = pd.read_csv(dataset_path).fillna("")
+    except Exception as e:
+        if dataset_path.endswith(".jsonl"):
+            data = pd.DataFrame([json.loads(line) for line in open(dataset_path)])
+        else:
+            raise e
+    
+    # Add index column if not present
+    if "index" not in data.columns:
+        data["index"] = [str(i) for i in range(len(data))]
+    
+    # Convert DataFrame to list of dictionaries
+    data_dicts = data.to_dict("records")
+    
+    # Create the benchmark runner
+    runner = ToMBenchmarkRunner(
+        model_name=model_name,
+        dataset_name=dataset_name,
+        existing_socialized_contexts_path=(
+            {"data_path": f"data/diamonds_socialized_contexts_{context_model}.json", "identifier_key": "index"}
+            if mode in ["socialized_context", "simulation", "pure_context"]
+            else None
+        ),
+        mode=mode,
+        context_model=context_model,
+    )
+    
+    # Run the benchmark
+    asyncio.run(
+        run_benchmark_async(
+            data_dicts,
+            runner,
+            benchmark_type,
+            save,
+            mode,
+            continue_mode,
+            example_analysis_file,
+            batch_size,
+        )
+    )
+    
+    # Print the results
+    print(f"Finished running DIAMONDs benchmark in {mode} mode.")
 
 
 if __name__ == "__main__":
