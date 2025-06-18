@@ -3,7 +3,7 @@ from typing import Any, Optional, Union
 
 from social_world_model.social_world_model import SocialWorldModel
 
-DIAMONDS_SOCIALIZED_CONTEXT_PROMPT = """For the DIAMONDs dataset, analyze the conversation to understand what information each participant has access to. 
+DIAMONDS_SOCIALIZED_CONTEXT_PROMPT = """For the DIAMONDs dataset, analyze the conversation to understand what information each participant has access to.
 Pay special attention to:
 1. Who is present in each part of the conversation
 2. What numerical information is shared
