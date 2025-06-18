@@ -1,46 +1,33 @@
 # Run the benchmarks for the TOM dataset
-import os
-import pandas as pd
-from rich import print
-import json
-from pathlib import Path
-import logging
 import asyncio
-from sotopia.generation_utils import StrOutputParser, agenerate
-from typing import Any, Literal, get_args, Optional, cast
-from rich.logging import RichHandler
-from social_world_model.social_world_model import SocialWorldModel
-from social_world_model.database import SocializedContext, SocialSimulation
-from social_world_model.task_modules import (
-    tomi_simulation,
-    fantom_simulation,
-    flatten_fantom_data,
-    confaide_simulation,
-    hitom_simulation,
-    prepare_tomi_vanilla,
-    prepare_fantom_vanilla,
-    prepare_confaide_vanilla,
-    prepare_hitom_vanilla,
-    create_tomi_result,
-    create_fantom_result,
-    create_confaide_result,
-    create_hitom_result,
-    tomi_evaluation_report,
-    fantom_evaluation_report,
-    confaide_evaluation_report,
-    hitom_evaluation_report,
-    TOMI_SOCIALIZED_CONTEXT_PROMPT,
-    FANTOM_SOCIALIZED_CONTEXT_PROMPT,
-    CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
-    COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
-    cobra_frames_simulation,
-    prepare_cobra_frames_vanilla,
-    create_cobra_frames_result,
-    cobra_frames_evaluation_report,
-    HITOM_SOCIALIZED_CONTEXT_PROMPT,
-)
-from social_world_model.engine import load_existing_socialized_contexts
+import json
+import logging
+import os
+from pathlib import Path
+from typing import Any, Literal, Optional, cast, get_args
+
+import pandas as pd
 import typer
+from rich import print
+from rich.logging import RichHandler
+from sotopia.generation_utils import StrOutputParser, agenerate
+
+from social_world_model.database import SocializedContext, SocialSimulation
+from social_world_model.engine import load_existing_socialized_contexts
+from social_world_model.social_world_model import SocialWorldModel
+from social_world_model.task_modules import (
+    COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT, CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
+    DIAMONDS_SOCIALIZED_CONTEXT_PROMPT, FANTOM_SOCIALIZED_CONTEXT_PROMPT,
+    HITOM_SOCIALIZED_CONTEXT_PROMPT, TOMI_SOCIALIZED_CONTEXT_PROMPT,
+    cobra_frames_evaluation_report, cobra_frames_simulation,
+    confaide_evaluation_report, confaide_simulation,
+    create_cobra_frames_result, create_confaide_result, create_diamonds_result,
+    create_fantom_result, create_hitom_result, create_tomi_result,
+    diamonds_evaluation_report, diamonds_simulation, fantom_evaluation_report,
+    fantom_simulation, flatten_fantom_data, hitom_evaluation_report,
+    hitom_simulation, prepare_cobra_frames_vanilla, prepare_confaide_vanilla,
+    prepare_diamonds_vanilla, prepare_fantom_vanilla, prepare_hitom_vanilla,
+    prepare_tomi_vanilla, tomi_evaluation_report, tomi_simulation)
 
 # Configure logging
 FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
@@ -63,7 +50,9 @@ ModeType = Literal[
 ]
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom", "diamonds"]
+BenchmarkType = Literal[
+    "tomi", "fantom", "confaide", "cobra_frames", "hitom", "diamonds"
+]
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
@@ -250,14 +239,11 @@ class ToMBenchmarkRunner:
             example_analysis = str(example_analysis)
         else:
             example_analysis = ""
-        if (
-            benchmark_type
-            in [
-                "fantom",
-                "confaide",
-                "hitom",
-            ]
-        ):  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
+        if benchmark_type in [
+            "fantom",
+            "confaide",
+            "hitom",
+        ]:  # Both FANToM and ConFaIde have repeated set_ids, so we cache the socialized contexts
             if row["set_id"] in engine.existing_socialized_contexts:
                 socialized_context = engine.existing_socialized_contexts[row["set_id"]]
             else:
@@ -609,12 +595,13 @@ def run_diamonds(
     if not os.path.exists(dataset_path):
         print(f"Dataset {dataset_path} not found. Preparing DIAMONDs dataset...")
         from scripts.prepare_diamonds_data import prepare_diamonds_data
+
         prepare_diamonds_data()
-    
+
     # Run the benchmark
     benchmark_type = "diamonds"
     dataset_name = dataset_path.split("/")[-1]
-    
+
     try:
         data = pd.read_csv(dataset_path).fillna("")
     except Exception as e:
@@ -622,41 +609,46 @@ def run_diamonds(
             data = pd.DataFrame([json.loads(line) for line in open(dataset_path)])
         else:
             raise e
-    
+
     # Add index column if not present
     if "index" not in data.columns:
         data["index"] = [str(i) for i in range(len(data))]
-    
+
     # Convert DataFrame to list of dictionaries
     data_dicts = data.to_dict("records")
-    
+
     # Create the benchmark runner
     runner = ToMBenchmarkRunner(
         model_name=model_name,
         dataset_name=dataset_name,
         existing_socialized_contexts_path=(
-            {"data_path": f"data/diamonds_socialized_contexts_{context_model}.json", "identifier_key": "index"}
+            {
+                "data_path": f"data/diamonds_socialized_contexts_{context_model}.json",
+                "identifier_key": "index",
+            }
             if mode in ["socialized_context", "simulation", "pure_context"]
             else None
         ),
         mode=mode,
         context_model=context_model,
     )
-    
+
     # Run the benchmark
     asyncio.run(
-        run_benchmark_async(
-            data_dicts,
-            runner,
-            benchmark_type,
-            save,
-            mode,
-            continue_mode,
-            example_analysis_file,
-            batch_size,
+        _run_benchmark(
+            benchmark_type=benchmark_type,
+            dataset_name=dataset_name,
+            data=pd.DataFrame(data_dicts),
+            batch_size=batch_size,
+            save=save,
+            model_name=model_name,
+            mode=mode,
+            context_model=context_model,
+            continue_mode=continue_mode,
+            example_analysis_file=example_analysis_file,
         )
     )
-    
+
     # Print the results
     print(f"Finished running DIAMONDs benchmark in {mode} mode.")
 
