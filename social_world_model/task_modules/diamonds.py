@@ -1,14 +1,10 @@
 import math
+import re
 from typing import Any, Optional, Union
 
 from social_world_model.social_world_model import SocialWorldModel
 
-DIAMONDS_SOCIALIZED_CONTEXT_PROMPT = """For the DIAMONDs dataset, analyze the conversation to understand what information each participant has access to.
-Pay special attention to:
-1. Who is present in each part of the conversation
-2. What numerical information is shared
-3. How information changes throughout the conversation (e.g., price increases, quantity changes)
-4. What calculations each participant would be able to perform based on their access to information"""
+DIAMONDS_SOCIALIZED_CONTEXT_PROMPT = """For the DIAMONDs dataset, analyze the conversation. Note that if someone left the conversation, they would not be able to observe the utterances that happened after they left until they return. (Use none for the observations of the agents that left the conversation)"""
 
 
 def create_diamonds_result(
@@ -19,54 +15,32 @@ def create_diamonds_result(
     answer = parsed_result.get("answer", "")
 
     # Try to convert the answer to a float for evaluation
-    pred_ans: Union[float, str]
     try:
-        if answer.lower() == "na":
-            pred_ans = "NA"
-        else:
-            # Extract numeric value from the answer if it contains text
-            import re
-
-            numeric_match = re.search(r"[-+]?\d*\.\d+|\d+", answer)
-            if numeric_match:
-                pred_ans = float(numeric_match.group())
-            else:
-                pred_ans = float(answer)
-    except (ValueError, AttributeError):
-        pred_ans = "NA"  # Default to NA if conversion fails
+        pred_ans = float(answer)
+    except ValueError:
+        pred_ans = 0.0
 
     # Evaluate the answer
     true_ans = row.get("answer", None)
-    if true_ans == "NA":
-        accuracy = 1 if pred_ans == "NA" else 0
-        pred_ans_type = "NA"
-        true_ans_type = "NA"
-    elif pred_ans == "NA":
-        accuracy = 0
-        pred_ans_type = "NA"
-        true_ans_type = "answerable"
-    else:
-        # Use the 2% tolerance as mentioned in the README
-        try:
-            accuracy = (
-                1
-                if (
-                    isinstance(pred_ans, (int, float))
-                    and isinstance(true_ans, (int, float))
-                    and math.isclose(true_ans, pred_ans, rel_tol=2e-2)
-                )
-                else 0
+    
+    try:
+        accuracy = (
+            1
+            if (
+                isinstance(pred_ans, (int, float))
+                and isinstance(true_ans, (int, float))
+                and math.isclose(true_ans, pred_ans, rel_tol=2e-2)
             )
-        except (TypeError, ValueError):
-            accuracy = 0
-        pred_ans_type = "answerable"
-        true_ans_type = "answerable"
+            else 0
+        )
+    except (TypeError, ValueError):
+        accuracy = 0
 
     # Create the result dictionary
     targeted_entries = [
         "id",
         "qa_type",
-        "conversation",
+        "context",
         "final_question",
         "answer",
         "conv_access_grp",
@@ -80,8 +54,6 @@ def create_diamonds_result(
         "pred_ans": pred_ans,
         "true_ans": true_ans,
         "accuracy": accuracy,
-        "pred_ans_type": pred_ans_type,
-        "true_ans_type": true_ans_type,
     }
 
     for entry in targeted_entries:
@@ -99,11 +71,12 @@ def prepare_diamonds_vanilla(
     """Prepare DIAMONDs data for vanilla mode."""
     extra_info = row.get("extra_info", "")
 
-    # Get the conversation from the row
-    if isinstance(row["conversation"], dict):
-        conversation_text = format_conversation(row["conversation"])
+    # Handle both old segmented format and new flattened format
+    if isinstance(row["context"], dict):
+        conversation_text = format_conversation(row["context"])
     else:
-        conversation_text = row["conversation"]
+        conversation_text = row["context"]
+    
 
     # Determine context based on pure_context flag
     if extra_info and pure_context:
@@ -124,18 +97,15 @@ You are an assistant helping to answer questions based on a conversation.
 {extra_info}
 
 ## Task
-You need to answer the following question based on the conversation, from the perspective of {participant}.
 {final_question}
-
-Remember that {participant} only has access to the information they were present for in the conversation.
 
 Format your response as follows:
 <reasoning>
-Provide your step-by-step reasoning here. Consider what information {participant} has access to.
+Provide your step-by-step reasoning here.
 </reasoning>
 
 <answer>
-Your final numerical answer here. If the question cannot be answered based on the information available to {participant}, respond with "NA".
+Your final numerical answer here (only numbers that can be converted to float).
 </answer>
 """
 
@@ -149,17 +119,19 @@ Your final numerical answer here. If the question cannot be answered based on th
     return template, input_values
 
 
-def format_conversation(conversation_data: dict[str, Any]) -> str:
+def format_conversation(conversation_data: Union[dict[str, Any], str]) -> str:
     """Format the conversation data into a readable text format."""
+    # If conversation_data is already a string (flattened), return it directly
+    if isinstance(conversation_data, str):
+        return conversation_data
+    
+    # Handle legacy format with segments (for backward compatibility)
     formatted_text = ""
-
     if "conversation" in conversation_data:
-        for i, segment in enumerate(conversation_data["conversation"]):
-            formatted_text += f"Segment {i+1}:\n"
-            for utterance in segment:
+        for utterance_list in conversation_data["conversation"]:
+            for utterance in utterance_list:
                 for speaker, message in utterance.items():
                     formatted_text += f"{speaker}: {message}\n"
-            formatted_text += "\n"
 
     return formatted_text
 

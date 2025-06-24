@@ -452,12 +452,15 @@ def run_benchmark(
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data100.csv",
-            "diamonds": "./data/diamonds/diamonds_data.csv",
+            "diamonds": "./data/diamonds_data/distr-conv-QA-600.jsonl",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
     try:
         data = pd.read_csv(dataset_path).fillna("")
+        # Check if CSV read resulted in empty DataFrame (can happen with JSON files)
+        if data.empty:
+            raise ValueError("Empty DataFrame from CSV read")
         # Ensure index is string
         if "index" in data.columns:
             data["index"] = data["index"].astype(str)
@@ -468,13 +471,19 @@ def run_benchmark(
         if dataset_path.endswith(".jsonl"):
             data_list = []
             with open(dataset_path, "r") as f:
-                for line in f:
-                    entry = json.loads(line)
-                    if benchmark_type == "fantom":
-                        data_list += flatten_fantom_data(entry)
-                    else:
-                        # For confaide, we assume the data is already flattened
-                        data_list.append(entry)
+                try:
+                    # Try to load as single JSON array first
+                    data_list = json.load(f)
+                except json.JSONDecodeError:
+                    # If that fails, try line-by-line JSONL format
+                    f.seek(0)  # Reset file pointer
+                    for line in f:
+                        entry = json.loads(line)
+                        if benchmark_type == "fantom":
+                            data_list += flatten_fantom_data(entry)
+                        else:
+                            # For confaide, we assume the data is already flattened
+                            data_list.append(entry)
             data = pd.DataFrame(data_list)
             data["index"] = [str(i) for i in range(len(data))]
 
@@ -486,9 +495,14 @@ def run_benchmark(
             raise ValueError(f"Data set in a different format: {e}")
         if "set_id" in data.columns:
             data["set_id"] = data["set_id"].astype(str)
+    
+    # Add index column if not present (for all datasets)
+    if "index" not in data.columns:
+        data["index"] = [str(i) for i in range(len(data))]
+    
     if mode == "generate_socialized_context":
         # For fantom and confaide, select a subset of unique set_ids
-        if benchmark_type in ["fantom", "confaide", "hitom"]:
+        if benchmark_type in ["fantom", "confaide", "hitom", "diamonds"]:
             data = data.groupby("set_id").head(1).reset_index(drop=True)
         mode = "socialized_context"
     asyncio.run(
@@ -584,80 +598,6 @@ async def _run_benchmark(
         hitom_evaluation_report(all_results)
     elif benchmark_type == "diamonds":
         diamonds_evaluation_report(all_results)
-
-
-@app.command()
-def run_diamonds(
-    dataset_path: str = typer.Option(
-        "./data/diamonds/diamonds_data.csv",
-        help="Path to the DIAMONDs dataset",
-    ),
-    batch_size: int = 4,
-    save: bool = True,
-    model_name: str = "o1-2024-12-17",
-    mode: str = typer.Option(
-        "vanilla",
-        help="Mode to run in (vanilla/socialized_context/pure_context/simulation/generate_socialized_context)",
-        callback=validate_mode,
-    ),
-    continue_mode: str = typer.Option(
-        "new",
-        help="Whether to continue from existing results (new/continue)",
-        callback=validate_continue_mode,
-    ),
-    example_analysis_file: str = typer.Option(
-        "", help="Path to the example analysis file"
-    ),
-    context_model: str = typer.Option(
-        "o1-2024-12-17",
-        help="Model to use for context generation",
-    ),
-) -> None:
-    """Run DIAMONDs benchmark experiments."""
-    # Prepare the dataset if it doesn't exist
-    if not os.path.exists(dataset_path):
-        print(f"Dataset {dataset_path} not found. Preparing DIAMONDs dataset...")
-        from scripts.prepare_diamonds_data import prepare_diamonds_data
-
-        prepare_diamonds_data()
-
-    # Run the benchmark
-    benchmark_type = "diamonds"
-    dataset_name = dataset_path.split("/")[-1]
-
-    try:
-        data = pd.read_csv(dataset_path).fillna("")
-    except Exception as e:
-        if dataset_path.endswith(".jsonl"):
-            data = pd.DataFrame([json.loads(line) for line in open(dataset_path)])
-        else:
-            raise e
-
-    # Add index column if not present
-    if "index" not in data.columns:
-        data["index"] = [str(i) for i in range(len(data))]
-
-    # Convert DataFrame to list of dictionaries
-    data_dicts = data.to_dict("records")
-
-    # Run the benchmark
-    asyncio.run(
-        _run_benchmark(
-            benchmark_type=benchmark_type,
-            dataset_name=dataset_name,
-            data=pd.DataFrame(data_dicts),
-            batch_size=batch_size,
-            save=save,
-            model_name=model_name,
-            mode=mode,
-            context_model=context_model,
-            continue_mode=continue_mode,
-            example_analysis_file=example_analysis_file,
-        )
-    )
-
-    # Print the results
-    print(f"Finished running DIAMONDs benchmark in {mode} mode.")
 
 
 if __name__ == "__main__":
