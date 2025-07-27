@@ -139,14 +139,12 @@ async def mmtom_simulation(
 ) -> dict[str, Any]:
     """Run MMTom simulation."""
     assert engine is not None, "Engine must be provided"
-    # Extract context and question
-    question_text = row["question"]
-    context = question_text.split("Question:")[0].strip()
-    question = question_text.split("Question:")[1].strip()
-    
-    # Get the character name from the actions
-    actions_text = context.split("Actions taken by")[1].split(":")[0].strip()
-    
     # Run simulation
-    result = await engine.simulate(context, question)
+    result = {
+        "question": row["question"],
+        "reasoning": "",
+        "answer": "",
+        "correct_answer": row["answer"],
+        "is_correct": False,
+    }
     return result 

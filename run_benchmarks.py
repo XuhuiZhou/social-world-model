@@ -7,7 +7,7 @@ from pathlib import Path
 import logging
 import asyncio
 from sotopia.generation_utils import StrOutputParser, agenerate
-from typing import Any, Literal, get_args, Optional, cast
+from typing import Any, Literal, get_args, Optional, cast, List, Dict
 from rich.logging import RichHandler
 from social_world_model.social_world_model import SocialWorldModel
 from social_world_model.database import SocializedContext, SocialSimulation
@@ -469,7 +469,7 @@ def run_benchmark(
     except Exception as e:
         # Load jsonl file for fantom, confaide, and mmtom datasets
         if dataset_path.endswith(".jsonl"):
-            data_list = []
+            data_list: List[Dict[str, Any]] = []
             if benchmark_type == "mmtom":
                 # For MMTom, read the entire file and split on newlines
                 with open(dataset_path, "r") as f:
