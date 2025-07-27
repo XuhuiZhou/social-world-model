@@ -7,7 +7,7 @@ from pathlib import Path
 import logging
 import asyncio
 from sotopia.generation_utils import StrOutputParser, agenerate
-from typing import Any, Literal, get_args, Optional, cast
+from typing import Any, Literal, get_args, Optional, cast, List, Dict
 from rich.logging import RichHandler
 from social_world_model.social_world_model import SocialWorldModel
 from social_world_model.database import SocializedContext, SocialSimulation
@@ -38,6 +38,11 @@ from social_world_model.task_modules import (
     create_cobra_frames_result,
     cobra_frames_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    mmtom_simulation,
+    prepare_mmtom_vanilla,
+    create_mmtom_result,
+    mmtom_evaluation_report,
+    MMTOM_SOCIALIZED_CONTEXT_PROMPT,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -64,8 +69,9 @@ ModeType = Literal[
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
 BenchmarkType = Literal[
-    "tomi", "fantom", "confaide", "cobra_frames", "hitom", "ori_tomi"
+    "tomi", "fantom", "confaide", "cobra_frames", "hitom", "ori_tomi", "mmtom"
 ]
+
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
@@ -73,6 +79,7 @@ SocializedContextPrompt = {
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
     "ori_tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
+    "mmtom": MMTOM_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 MAX_RETRIES = 10
@@ -179,6 +186,8 @@ class ToMBenchmarkRunner:
             template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
         elif benchmark_type == "hitom":
             template, input_values = prepare_hitom_vanilla(row, pure_context)
+        elif benchmark_type == "mmtom":
+            template, input_values = prepare_mmtom_vanilla(row, pure_context)
         # Generate response
         for attempt in range(1, MAX_RETRIES + 1):
             try:
@@ -216,6 +225,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = self._parse_response(response, row)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "mmtom":
+            parsed_result = self._parse_response(response, row)
+            result = create_mmtom_result(parsed_result, row)
         return result
 
     async def _run_socialized_context(
@@ -337,6 +349,9 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = await hitom_simulation(row, engine)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "mmtom":
+            parsed_result = await mmtom_simulation(row, engine)
+            result = create_mmtom_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
@@ -346,12 +361,20 @@ class ToMBenchmarkRunner:
     def _parse_response(self, response: str, row: dict[str, Any]) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
-            reasoning = response.split("</reasoning>")[0].strip()
+            reasoning = (
+                response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
+            )
             answer = response.split("<answer>")[1].split("</answer>")[0].strip()
         except Exception as e:
             print(f"Failed to parse response: {e}")
             reasoning = "Failed to parse reasoning"
-            answer = response
+            # For MMTom, try to extract just the answer letter (a/b) if the full parsing fails
+            if "mmtom" in str(row.get("question_type", "")):
+                answer = response.strip().lower()[-1]  # Get last character
+                if answer not in ["a", "b"]:
+                    answer = "a"  # Default to a if not a valid answer
+            else:
+                answer = response
 
         return {
             "reasoning": reasoning,
@@ -404,7 +427,7 @@ def validate_context_mode(value: str) -> str:
 def run_benchmark(
     benchmark_type: str = typer.Argument(
         ...,
-        help="Type of benchmark to run (tomi/fantom/confaide/hitom)",
+        help="Type of benchmark to run (tomi/fantom/confaide/hitom/mmtom)",
         callback=validate_benchmark_type,
     ),
     dataset_path: Optional[str] = None,
@@ -436,6 +459,7 @@ def run_benchmark(
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
+            "mmtom": "./data/mmtom-qa/questions.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data100.csv",
             "ori_tomi": "./data/Percept-ToMi.csv",
         }[benchmark_type]
@@ -449,17 +473,40 @@ def run_benchmark(
         if "set_id" in data.columns:
             data["set_id"] = data["set_id"].astype(str)
     except Exception as e:
-        # Load jsonl file for fantom and confaide datasets
+        # Load jsonl file for fantom, confaide, and mmtom datasets
         if dataset_path.endswith(".jsonl"):
-            data_list = []
-            with open(dataset_path, "r") as f:
-                for line in f:
-                    entry = json.loads(line)
-                    if benchmark_type == "fantom":
-                        data_list += flatten_fantom_data(entry)
-                    else:
-                        # For confaide, we assume the data is already flattened
-                        data_list.append(entry)
+            data_list: List[Dict[str, Any]] = []
+            if benchmark_type == "mmtom":
+                # For MMTom, read the entire file and split on newlines
+                with open(dataset_path, "r") as f:
+                    content = f.read()
+                    # Split on newlines and filter out empty lines
+                    json_objects = [
+                        obj.strip() for obj in content.split("\n") if obj.strip()
+                    ]
+                    for obj in json_objects:
+                        try:
+                            entry = json.loads(obj)
+                            # Ensure required fields are present
+                            entry["index"] = str(len(data_list))
+                            entry["question_type"] = entry.get("question_type", "")
+                            entry["episode"] = entry.get("episode", "")
+                            entry["answer"] = entry.get(
+                                "answer", ""
+                            )  # Ensure answer field exists
+                            data_list.append(entry)
+                        except json.JSONDecodeError:
+                            pass  # Skip invalid JSON
+            else:
+                # For other datasets, assume one JSON object per line
+                with open(dataset_path, "r") as f:
+                    for line in f:
+                        entry = json.loads(line)
+                        if benchmark_type == "fantom":
+                            data_list += flatten_fantom_data(entry)
+                        else:
+                            # For confaide, we assume the data is already flattened
+                            data_list.append(entry)
             data = pd.DataFrame(data_list)
             data["index"] = [str(i) for i in range(len(data))]
 
@@ -488,6 +535,7 @@ def run_benchmark(
             continue_mode=continue_mode,
             example_analysis_file=example_analysis_file,
             context_model=context_model,
+            load_contexts=mode != "vanilla",  # Skip loading contexts in vanilla mode
         )
     )
 
@@ -503,6 +551,7 @@ async def _run_benchmark(
     context_model: str = "o1-2024-12-17",
     continue_mode: str = "new",
     example_analysis_file: str = "",
+    load_contexts: bool = True,
 ) -> None:
     """Async implementation of benchmark runner."""
 
@@ -567,6 +616,8 @@ async def _run_benchmark(
         cobra_frames_evaluation_report(all_results)
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
+    elif benchmark_type == "mmtom":
+        mmtom_evaluation_report(all_results)
 
 
 if __name__ == "__main__":

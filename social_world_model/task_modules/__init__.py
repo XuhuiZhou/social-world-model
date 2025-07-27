@@ -40,6 +40,14 @@ from .hitom import (
     reformat_hitom_data,
 )
 
+from .mmtom import (
+    mmtom_simulation,
+    prepare_mmtom_vanilla,
+    create_mmtom_result,
+    mmtom_evaluation_report,
+    MMTOM_SOCIALIZED_CONTEXT_PROMPT,
+)
+
 __all__ = [
     "tomi_simulation",
     "prepare_tomi_vanilla",
@@ -70,4 +78,9 @@ __all__ = [
     "hitom_evaluation_report",
     "HITOM_SOCIALIZED_CONTEXT_PROMPT",
     "reformat_hitom_data",
+    "mmtom_simulation",
+    "prepare_mmtom_vanilla",
+    "create_mmtom_result",
+    "mmtom_evaluation_report",
+    "MMTOM_SOCIALIZED_CONTEXT_PROMPT",
 ]
