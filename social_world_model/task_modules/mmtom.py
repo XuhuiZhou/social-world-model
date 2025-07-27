@@ -5,13 +5,14 @@ from tqdm import tqdm
 
 MMTOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the MMTom scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
 
+
 def prepare_mmtom_vanilla(
     row: dict[str, Any], pure_context: bool = False
 ) -> tuple[str, dict[str, Any]]:
     """Prepare the vanilla prompt for MMTom dataset."""
     # The question field already contains both context and question
     question_text = row["question"]
-    
+
     extra_info = row.get("extra_info", "")
     if extra_info:
         if pure_context:
@@ -34,6 +35,7 @@ Below is the context and question (and optional extra information):
 
     return template, input_values
 
+
 def create_mmtom_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
@@ -51,14 +53,15 @@ def create_mmtom_result(
         "end_time": row.get("end_time", ""),
         "answer_list": row.get("answer_list", []),
     }
-    
+
     # Add socialized_context and extra_info if they exist
     if "socialized_context" in row:
         result["socialized_context"] = row["socialized_context"]
     if "extra_info" in row:
         result["extra_info"] = row["extra_info"]
-        
+
     return result
+
 
 class MMTomEvalAgent:
     def __init__(self, model_name: str):
@@ -72,12 +75,12 @@ class MMTomEvalAgent:
             # Extract the answer from the prediction
             try:
                 answer = pred.split("<answer>")[1].split("</answer>")[0].strip().lower()
-            except:
+            except (IndexError, AttributeError):
                 answer = pred.lower()
-            
+
             # For MMTom, we need exact match since answers are just a/b
             result = answer == qa["answer"].lower()
-            
+
             qa["result"] = result
             qa["prediction"] = pred
         return qas
@@ -105,20 +108,27 @@ class MMTomEvalAgent:
         # Accuracy by question type
         for qtype in df["question_type"].unique():
             type_df = df[df["question_type"] == qtype]
-            report[f"type_{qtype}_accuracy"] = [type_df["is_correct"].mean(), len(type_df)]
+            report[f"type_{qtype}_accuracy"] = [
+                type_df["is_correct"].mean(),
+                len(type_df),
+            ]
 
         # Accuracy by episode
         for episode in df["episode"].unique():
             episode_df = df[df["episode"] == episode]
-            report[f"episode_{episode}_accuracy"] = [episode_df["is_correct"].mean(), len(episode_df)]
+            report[f"episode_{episode}_accuracy"] = [
+                episode_df["is_correct"].mean(),
+                len(episode_df),
+            ]
 
         return report
+
 
 def mmtom_evaluation_report(results: list[dict[str, Any]]) -> None:
     """Evaluate MMTom results."""
     eval_agent = MMTomEvalAgent("mmtom")
     df = pd.DataFrame(results)
-    
+
     # Overall report
     overall_report = eval_agent.score_and_analyze(df)
     print("\nOverall Results:")
@@ -134,6 +144,7 @@ def mmtom_evaluation_report(results: list[dict[str, Any]]) -> None:
         for metric, (score, count) in type_report.items():
             print(f"{metric}: {score:.2%} ({count} examples)")
 
+
 async def mmtom_simulation(
     row: dict[str, Any], engine: Optional[SocialWorldModel] = None
 ) -> dict[str, Any]:
@@ -147,4 +158,4 @@ async def mmtom_simulation(
         "correct_answer": row["answer"],
         "is_correct": False,
     }
-    return result 
+    return result

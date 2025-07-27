@@ -358,7 +358,9 @@ class ToMBenchmarkRunner:
     def _parse_response(self, response: str, row: dict[str, Any]) -> dict[str, Any]:
         """Parse ToMi response and create result dictionary."""
         try:
-            reasoning = response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
+            reasoning = (
+                response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
+            )
             answer = response.split("<answer>")[1].split("</answer>")[0].strip()
         except Exception as e:
             print(f"Failed to parse response: {e}")
@@ -475,7 +477,9 @@ def run_benchmark(
                 with open(dataset_path, "r") as f:
                     content = f.read()
                     # Split on newlines and filter out empty lines
-                    json_objects = [obj.strip() for obj in content.split("\n") if obj.strip()]
+                    json_objects = [
+                        obj.strip() for obj in content.split("\n") if obj.strip()
+                    ]
                     for obj in json_objects:
                         try:
                             entry = json.loads(obj)
@@ -483,7 +487,9 @@ def run_benchmark(
                             entry["index"] = str(len(data_list))
                             entry["question_type"] = entry.get("question_type", "")
                             entry["episode"] = entry.get("episode", "")
-                            entry["answer"] = entry.get("answer", "")  # Ensure answer field exists
+                            entry["answer"] = entry.get(
+                                "answer", ""
+                            )  # Ensure answer field exists
                             data_list.append(entry)
                         except json.JSONDecodeError:
                             pass  # Skip invalid JSON
@@ -594,7 +600,7 @@ async def _run_benchmark(
         ]
         results = await asyncio.gather(*tasks)
         all_results.extend(results)
-    
+
     # Final evaluation report
     if benchmark_type == "tomi":
         tomi_evaluation_report(all_results)

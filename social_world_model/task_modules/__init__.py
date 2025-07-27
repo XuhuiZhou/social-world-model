@@ -37,7 +37,8 @@ from .hitom import (
     create_hitom_result,
     hitom_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
-    reformat_hitom_data,)
+    reformat_hitom_data,
+)
 
 from .mmtom import (
     mmtom_simulation,
