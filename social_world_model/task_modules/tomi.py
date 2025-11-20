@@ -5,7 +5,9 @@ TOMI_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the TOMI scenarios. The a
 
 
 def prepare_tomi_vanilla(
-    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True, 
+    row: dict[str, Any],
+    pure_context: bool = False,
+    with_reasoning: bool = True,
 ) -> tuple[str, dict[str, Any]]:
     try:
         story = " ".join(eval(row["story"]))

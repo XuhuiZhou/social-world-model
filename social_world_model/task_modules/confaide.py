@@ -53,7 +53,7 @@ def prepare_confaide_vanilla(
             context = row["context"]
     else:
         context = row["context"]
-    
+
     template = ""
     if with_reasoning:
         if row["question_type"] == "meeting-summary":

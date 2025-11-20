@@ -19,7 +19,7 @@ def prepare_fantom_vanilla(
             context = row["context"]
     else:
         context = row["context"]
-    
+
     if with_reasoning:
         template = """
 You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
@@ -318,7 +318,10 @@ class FantomEvalAgent:
             predictions
         ), "Number of questions and model predictions should be the same."
         # remove <answer> and </answer> from predictions if they exist
-        predictions = [pred.replace("<answer>", "").replace("</answer>", "") for pred in predictions]
+        predictions = [
+            pred.replace("<answer>", "").replace("</answer>", "")
+            for pred in predictions
+        ]
         for qa, pred in tqdm(zip(qas, predictions), total=len(qas)):
             if qa["question_type"].startswith("tom:belief:"):
                 if qa["question_type"].endswith(":multiple-choice"):

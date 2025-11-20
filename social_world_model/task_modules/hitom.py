@@ -29,7 +29,7 @@ def prepare_hitom_vanilla(
             story = story + "\n" + extra_info
 
     question = row["question"] + "\n" + row["choices"]
-    
+
     if with_reasoning:
         template = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information.
 
@@ -65,7 +65,13 @@ def evaluate_response(result: dict[str, Any]) -> dict[str, Any]:
     # dict(re.findall(r'([A-Z])\. ([^,]+)', choice_str))
     choices = result["choices"]
     # remove <answer> and </answer> from answer if they exist
-    answer = result["answer"].replace("<answer>", "").replace("</answer>", "").strip().capitalize()
+    answer = (
+        result["answer"]
+        .replace("<answer>", "")
+        .replace("</answer>", "")
+        .strip()
+        .capitalize()
+    )
     answer_dict = dict(re.findall(r"([A-Z])\. ([^,]+)", choices))
     answer_list = list(answer_dict.keys())
 

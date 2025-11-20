@@ -1,7 +1,6 @@
 from social_world_model.social_world_model import SocialWorldModel
 from typing import Any, Optional
 import pandas as pd
-from tqdm import tqdm
 
 MMTOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the MMTom scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
 
@@ -50,7 +49,9 @@ def create_mmtom_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
     """Create MMTom result dictionary."""
-    parsed_result["answer"] = parsed_result["answer"].replace("<answer>", "").replace("</answer>", "").strip()
+    parsed_result["answer"] = (
+        parsed_result["answer"].replace("<answer>", "").replace("</answer>", "").strip()
+    )
     result = {
         "question": row["question"],
         "reasoning": parsed_result.get("reasoning", ""),
