@@ -5,7 +5,7 @@ TOMI_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the TOMI scenarios. The a
 
 
 def prepare_tomi_vanilla(
-    row: dict[str, Any], pure_context: bool = False
+    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True, 
 ) -> tuple[str, dict[str, Any]]:
     try:
         story = " ".join(eval(row["story"]))
@@ -20,6 +20,20 @@ def prepare_tomi_vanilla(
 
     question = row["question"]
     template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the **most detailed position possible** e.g., the object is in A and A is in B, then you should answer 'A'. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and only include the most **detailed** location but not other information.
+
+Below is the story and question (and optional extra information):
+## Story
+{story}
+
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+
+## Question
+{question}"""
+
+    if not with_reasoning:
+        template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should majorly focus on where the object has been moved to, and answer the question with the **most detailed position possible** e.g., the object is in A and A is in B, then you should answer 'A'. Use <answer>(put your answer here)</answer> and only include the most **detailed** location but not other information.
 
 Below is the story and question (and optional extra information):
 ## Story

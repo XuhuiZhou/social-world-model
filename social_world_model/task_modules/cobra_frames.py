@@ -38,7 +38,7 @@ def create_cobra_frames_result(
 
 
 def prepare_cobra_frames_vanilla(
-    row: dict[str, Any], pure_context: bool = False
+    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True
 ) -> tuple[str, dict[str, Any]]:
     context = row.get("context", "")
     extra_info = row.get("extra_info", "")
@@ -48,7 +48,8 @@ def prepare_cobra_frames_vanilla(
             context = extra_info
             extra_info = ""
 
-    template = """
+    if with_reasoning:
+        template = """
 ## Context
 {context}
 
@@ -62,6 +63,21 @@ Don't just focus on literal meaning of the statement, and use the simulations in
 Format your response with:
 1. Reasoning in <reasoning>...</reasoning> tags
 2. Final answer (0 for not offensive, 1 for offensive) in <answer>...</answer> tags
+"""
+    else:
+        template = """
+## Context
+{context}
+
+## Extra Info
+(to help you better understand the scenario)
+{extra_info}
+
+## Task
+Analyze whether the statement is offensive in this context.
+Don't just focus on literal meaning of the statement, and use the simulations in the Extra Info for your analysis.
+Format your response with:
+Final answer (0 for not offensive, 1 for offensive) in <answer>...</answer> tags
 """
     input_values = {
         "context": context,

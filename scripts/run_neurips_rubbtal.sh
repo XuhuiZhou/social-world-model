@@ -3,12 +3,6 @@
 # Array of models to use for tasks
 TASK_MODELS=(
     "gpt-4o-2024-08-06"
-    "gpt-4.1-2025-04-14"
-    "o1-2024-12-17"
-    "o3-2025-04-16"
-    "o3-mini-2025-01-31"
-    "together_ai/deepseek-ai/DeepSeek-R1"
-    "together_ai/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
 )
 
 # Only use o3 for context generation
@@ -16,11 +10,11 @@ CONTEXT_MODEL="o3-2025-04-16"
 
 # Array of benchmarks to run
 BENCHMARKS=(
-    "tomi"
-    "ori_tomi"
-    "fantom"
-    "confaide"
-    "hitom"
+    # "tomi"
+    # "ori_tomi"
+    # "fantom"
+    # "confaide"
+    # "hitom"
     "mmtom"
 )
 
@@ -49,28 +43,11 @@ run_experiment() {
 # Run each benchmark
 for benchmark in "${BENCHMARKS[@]}"; do
     echo "Processing benchmark: $benchmark"
-
-    # First, generate socialized contexts
-    echo "Generating socialized contexts for $benchmark with context model $CONTEXT_MODEL"
-
-    # Set batch size for context generation based on model type
-    local context_batch_size=100
-    if [[ "$CONTEXT_MODEL" == *"together_ai"* ]]; then
-        context_batch_size=50
-    fi
-
-    uv run python run_benchmarks.py $benchmark \
-        --model-name "$CONTEXT_MODEL" \
-        --context-model "$CONTEXT_MODEL" \
-        --mode "generate_socialized_context" \
-        --continue-mode "continue" \
-        --batch-size $context_batch_size \
-        --example-analysis-file "data/social_contexts_example/${benchmark}.json"
-
     # Then run experiments with all task models
     for model in "${TASK_MODELS[@]}"; do
         # Run both vanilla and socialized context modes
-        run_experiment "$benchmark" "$model" "vanilla"
-        run_experiment "$benchmark" "$model" "socialized_context"
+        run_experiment "$benchmark" "$model" "vanilla_no_reasoning"
+        # run_experiment "$benchmark" "$model" "socialized_context_no_json"
+        # run_experiment "$benchmark" "$model" "few_shot_context"
     done
 done

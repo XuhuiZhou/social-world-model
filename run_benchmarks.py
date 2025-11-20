@@ -62,6 +62,9 @@ app = typer.Typer(pretty_exceptions_enable=False)
 ModeType = Literal[
     "vanilla",
     "socialized_context",
+    "few_shot_context",
+    "vanilla_no_reasoning",
+    "socialized_context_no_json",
     "pure_context",
     "simulation",
     "generate_socialized_context",
@@ -84,6 +87,9 @@ SocializedContextPrompt = {
 
 MAX_RETRIES = 10
 
+def json_to_text(json_str: str) -> str:
+    # remove json structure and concatenate the keys and values to a text string
+    return " ".join([f"{k}: {v}" for k, v in json.loads(json_str).items()])
 
 class ToMBenchmarkRunner:
     def __init__(
@@ -140,7 +146,7 @@ class ToMBenchmarkRunner:
 
         # Check for cached results if in continue mode
         if continue_mode == "continue" and result_path.exists():
-            print(f"Loading cached result for index {row['index']}")
+            #print(f"Loading cached result for index {row['index']}")
             with open(result_path) as f:
                 result = dict(json.load(f))
                 return result
@@ -148,6 +154,12 @@ class ToMBenchmarkRunner:
         # If no cached result or in new mode, run the experiment
         if mode == "vanilla":
             result = await self._run_vanilla(row, benchmark_type)
+        elif mode == "vanilla_no_reasoning":
+            result = await self._run_vanilla(row, benchmark_type, with_reasoning=False)
+        elif mode == "socialized_context_no_json":
+            result = await self._run_socialized_context(row, benchmark_type, example_analysis_file, engine=engine, context_format="text")
+        elif mode == "few_shot_context":
+            result = await self._run_few_shot_context(row, benchmark_type, example_analysis_file)
         elif mode == "pure_context":
             result = await self._run_socialized_context(
                 row,
@@ -172,22 +184,24 @@ class ToMBenchmarkRunner:
         return result
 
     async def _run_vanilla(
-        self, row: dict[str, Any], benchmark_type: str, pure_context: bool = False
+        self, row: dict[str, Any], benchmark_type: str, pure_context: bool = False, context_format: Literal["json", "text"] = "json", with_reasoning: bool = True
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
+        if context_format == "text":
+            row["extra_info"] = json_to_text(row["extra_info"])
         if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
-            template, input_values = prepare_tomi_vanilla(row, pure_context)
+            template, input_values = prepare_tomi_vanilla(row, pure_context, with_reasoning=with_reasoning)
         elif benchmark_type == "fantom":  # fantom
-            template, input_values = prepare_fantom_vanilla(row, pure_context)
+            template, input_values = prepare_fantom_vanilla(row, pure_context, with_reasoning=with_reasoning)
         elif benchmark_type == "confaide":  # confaide
-            template, input_values = prepare_confaide_vanilla(row, pure_context)
+            template, input_values = prepare_confaide_vanilla(row, pure_context, with_reasoning=with_reasoning)
         elif benchmark_type == "cobra_frames":
-            template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
+            template, input_values = prepare_cobra_frames_vanilla(row, pure_context, with_reasoning=with_reasoning)
         elif benchmark_type == "hitom":
-            template, input_values = prepare_hitom_vanilla(row, pure_context)
+            template, input_values = prepare_hitom_vanilla(row, pure_context, with_reasoning=with_reasoning)
         elif benchmark_type == "mmtom":
-            template, input_values = prepare_mmtom_vanilla(row, pure_context)
+            template, input_values = prepare_mmtom_vanilla(row, pure_context, with_reasoning=with_reasoning)
         # Generate response
         for attempt in range(1, MAX_RETRIES + 1):
             try:
@@ -237,6 +251,7 @@ class ToMBenchmarkRunner:
         example_analysis_file: str = "",
         pure_context: bool = False,
         engine: Optional[SocialWorldModel] = None,
+        context_format: Literal["json", "text"] = "json",
     ) -> dict[str, Any]:
         """Run experiment in socialized_context mode (using ToM engine for memory tracking)."""
         assert isinstance(
@@ -318,7 +333,19 @@ class ToMBenchmarkRunner:
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
         row["extra_info"] = socialized_context.to_natural_language()
-        result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
+        result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context, context_format=context_format)
+        return result
+    
+    async def _run_few_shot_context(
+        self,
+        row: dict[str, Any],
+        benchmark_type: str,
+        example_analysis_file: str = "",
+        pure_context: bool = False,
+    ) -> dict[str, Any]:
+        """Run experiment in few-shot context mode (using ToM engine for memory tracking)."""
+        row["extra_info"] = json.load(open("./data/few_shot_context.json")).get(benchmark_type, "")
+        result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context, context_format="json")
         return result
 
     async def _run_simulation(
@@ -430,10 +457,18 @@ def run_benchmark(
         help="Type of benchmark to run (tomi/fantom/confaide/hitom/mmtom)",
         callback=validate_benchmark_type,
     ),
-    dataset_path: Optional[str] = None,
-    batch_size: int = 4,
-    save: bool = True,
-    model_name: str = "o1-2024-12-17",
+    dataset_path: Optional[str] = typer.Option(
+        None, help="Path to the dataset file"
+    ),
+    batch_size: int = typer.Option(
+        4, help="Batch size for processing"
+    ),
+    save: bool = typer.Option(
+        True, help="Whether to save results"
+    ),
+    model_name: str = typer.Option(
+        "o1-2024-12-17", help="Model name to use"
+    ),
     mode: str = typer.Option(
         "vanilla",
         help="Mode to run in (vanilla/socialized_context/pure_context/simulation/generate_socialized_context; you need to run generate_socialized_context first to use simulation mode)",
