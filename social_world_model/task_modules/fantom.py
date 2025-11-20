@@ -8,7 +8,7 @@ FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation an
 
 
 def prepare_fantom_vanilla(
-    row: dict[str, Any], pure_context: bool = False
+    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True
 ) -> tuple[str, dict[str, Any]]:
     extra_info = row.get("extra_info", "")
     if extra_info:
@@ -19,8 +19,22 @@ def prepare_fantom_vanilla(
             context = row["context"]
     else:
         context = row["context"]
-    template = """
+
+    if with_reasoning:
+        template = """
 You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
+
+## Context
+{context}
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+## Question
+{question}
+"""
+    else:
+        template = """
+You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. For the answer, use <answer>(put your answer here)</answer>.
 
 ## Context
 {context}
@@ -303,6 +317,11 @@ class FantomEvalAgent:
         assert len(qas) == len(
             predictions
         ), "Number of questions and model predictions should be the same."
+        # remove <answer> and </answer> from predictions if they exist
+        predictions = [
+            pred.replace("<answer>", "").replace("</answer>", "")
+            for pred in predictions
+        ]
         for qa, pred in tqdm(zip(qas, predictions), total=len(qas)):
             if qa["question_type"].startswith("tom:belief:"):
                 if qa["question_type"].endswith(":multiple-choice"):

@@ -1,13 +1,12 @@
 from social_world_model.social_world_model import SocialWorldModel
 from typing import Any, Optional
 import pandas as pd
-from tqdm import tqdm
 
 MMTOM_SOCIALIZED_CONTEXT_PROMPT = """You are dissecting the MMTom scenarios. The assumptions are that the characters can perceive every scene in their location but not scenes occurring elsewhere. If the agent leaves the location, they cannot perceive the scene in that location anymore. In the agent's observation, remember to include the objects' locations if the agents are in the same location as the object."""
 
 
 def prepare_mmtom_vanilla(
-    row: dict[str, Any], pure_context: bool = False
+    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True
 ) -> tuple[str, dict[str, Any]]:
     """Prepare the vanilla prompt for MMTom dataset."""
     # The question field already contains both context and question
@@ -19,7 +18,17 @@ def prepare_mmtom_vanilla(
             question_text = extra_info
             extra_info = ""
 
-    template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should carefully analyze the character's actions and beliefs based on their observations. Provide your reasoning within the <reasoning></reasoning> tag. For the answer, use <answer>(put your answer here)</answer> and only include the letter (a or b) of your chosen option.
+    if with_reasoning:
+        template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should carefully analyze the character's actions and beliefs based on their observations. Provide your reasoning within the <reasoning></reasoning> tag. For the answer, use <answer>(put your answer here)</answer> and only include the letter (a or b) of your chosen option.
+
+Below is the context and question (and optional extra information):
+{question_text}
+
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}"""
+    else:
+        template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should carefully analyze the character's actions and beliefs based on their observations. For the answer, use <answer>(put your answer here)</answer> and only include the letter (a or b) of your chosen option.
 
 Below is the context and question (and optional extra information):
 {question_text}
@@ -40,6 +49,9 @@ def create_mmtom_result(
     parsed_result: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
     """Create MMTom result dictionary."""
+    parsed_result["answer"] = (
+        parsed_result["answer"].replace("<answer>", "").replace("</answer>", "").strip()
+    )
     result = {
         "question": row["question"],
         "reasoning": parsed_result.get("reasoning", ""),
@@ -67,24 +79,6 @@ class MMTomEvalAgent:
     def __init__(self, model_name: str):
         self.model_name = model_name
 
-    def evaluate_response(
-        self, qas: list[dict[str, Any]], predictions: list[str]
-    ) -> list[dict[str, Any]]:
-        """Evaluate model responses for MMTom questions."""
-        for qa, pred in tqdm(zip(qas, predictions), total=len(qas)):
-            # Extract the answer from the prediction
-            try:
-                answer = pred.split("<answer>")[1].split("</answer>")[0].strip().lower()
-            except (IndexError, AttributeError):
-                answer = pred.lower()
-
-            # For MMTom, we need exact match since answers are just a/b
-            result = answer == qa["answer"].lower()
-
-            qa["result"] = result
-            qa["prediction"] = pred
-        return qas
-
     def score_and_analyze(
         self, df: pd.DataFrame, target_scenario: str = "all"
     ) -> dict[str, Any]:
@@ -97,7 +91,6 @@ class MMTomEvalAgent:
             dict: Report containing various metrics and analyses
         """
         report = {}
-
         # Filter by question type if specified
         if target_scenario != "all":
             df = df[df["question_type"] == float(target_scenario)]
