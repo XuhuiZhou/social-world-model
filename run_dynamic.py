@@ -77,8 +77,6 @@ def run_dynamic_benchmark(
     benchmark(
         models=models.split(","),
         partner_model=partner_model,
-        agent_class=agent_class,
-        tag=experiment_tag,
         batch_size=batch_size,
         push_to_db=push_to_db,
         evaluator_model=evaluator_model,
