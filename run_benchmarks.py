@@ -100,7 +100,7 @@ class ToMBenchmarkRunner:
         dataset_name: str = "tomi",
         existing_socialized_contexts_path: Optional[dict[str, Any]] = None,
         mode: str = "vanilla",
-        context_model: str = "o1-2024-12-17",
+        context_model: str = "o3-2025-04-16",
     ):
         self.model_name = model_name
         self.dataset_name = dataset_name
@@ -496,7 +496,7 @@ def run_benchmark(
     dataset_path: Optional[str] = typer.Option(None, help="Path to the dataset file"),
     batch_size: int = typer.Option(4, help="Batch size for processing"),
     save: bool = typer.Option(True, help="Whether to save results"),
-    model_name: str = typer.Option("o1-2024-12-17", help="Model name to use"),
+    model_name: str = typer.Option("o3-2025-04-16", help="Model name to use"),
     mode: str = typer.Option(
         "vanilla",
         help="Mode to run in (vanilla/socialized_context/pure_context/simulation/generate_socialized_context; you need to run generate_socialized_context first to use simulation mode)",
@@ -511,7 +511,7 @@ def run_benchmark(
         "", help="Path to the example analysis file"
     ),
     context_model: str = typer.Option(
-        "o1-2024-12-17",
+        "o3-2025-04-16",
         help="Model to use for context generation",
     ),
 ) -> None:
@@ -611,7 +611,7 @@ async def _run_benchmark(
     save: bool,
     model_name: str,
     mode: str,
-    context_model: str = "o1-2024-12-17",
+    context_model: str = "o3-2025-04-16",
     continue_mode: str = "new",
     example_analysis_file: str = "",
     load_contexts: bool = True,
