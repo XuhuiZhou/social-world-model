@@ -337,7 +337,7 @@ def finetune(
     print(f"\nTo use in your code:")
     print(f'  model_name="together_ai/{model_name}"')
     print("\nExample usage:")
-    print("  from sotopia.generation_utils import agenerate")
+    print("  from social_world_model.generation_utils import agenerate")
     print("  result = await agenerate(")
     print(f'      model_name="together_ai/{model_name}",')
     print('      template="Generate socialized context for: {story}",')

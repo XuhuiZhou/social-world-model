@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import argparse
 import asyncio
-from sotopia.generation_utils import agenerate, StrOutputParser
+from social_world_model.generation_utils import agenerate, StrOutputParser
 
 
 # ============================================================================

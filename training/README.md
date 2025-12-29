@@ -164,10 +164,10 @@ To use in your code:
 
 ## Using the Fine-Tuned Model
 
-### With sotopia's agenerate
+### With agenerate
 
 ```python
-from sotopia.generation_utils import agenerate
+from social_world_model.generation_utils import agenerate
 
 story = "Mia entered the lounge. Chloe arrived at the lounge..."
 
