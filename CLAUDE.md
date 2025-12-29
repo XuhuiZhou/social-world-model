@@ -115,6 +115,19 @@ bun run build
 bun start
 ```
 
+### Fine-Tuning
+
+```bash
+# Run fine-tuning pipeline (requires TOGETHER_API_KEY and WANDB_API_KEY in .env)
+uv run --env-file .env python training/finetune_socialized_context.py
+
+# With custom config
+uv run --env-file .env python training/finetune_socialized_context.py --config-path=custom.yaml
+
+# Override data directory
+uv run --env-file .env python training/finetune_socialized_context.py --data-dir=data/custom_dir
+```
+
 ## Architecture
 
 ### Core Components

@@ -28,7 +28,7 @@ class FinetuneConfig:
 
     data_dir: str = ""
     output_dir: str = "training/output"
-    base_model: str = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+    base_model: str = "meta-llama/Meta-Llama-3.1-8B-Instruct-Reference"
     n_epochs: int = 3
     batch_size: str = "max"
     learning_rate: float = 1e-5

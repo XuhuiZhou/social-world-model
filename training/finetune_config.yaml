@@ -2,7 +2,7 @@
 # For fine-tuning Meta-Llama-3.1-8B-Instruct on socialized context generation
 
 # Model Configuration
-base_model: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+base_model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Reference"
 
 # Training Hyperparameters
 n_epochs: 3
