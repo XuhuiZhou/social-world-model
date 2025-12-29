@@ -1,0 +1,27 @@
+# Together AI Fine-Tuning Configuration
+# For fine-tuning Meta-Llama-3.1-8B-Instruct on socialized context generation
+
+# Model Configuration
+base_model: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
+# Training Hyperparameters
+n_epochs: 3
+batch_size: "max"  # Auto-determine optimal batch size
+learning_rate: 1.0e-5
+n_checkpoints: 3
+
+# LoRA Configuration (Parameter-Efficient Fine-Tuning)
+lora: true
+lora_rank: 64
+lora_alpha: 16
+
+# Data Configuration
+val_ratio: 0.1  # 10% of data for validation
+seed: 42        # Random seed for reproducibility
+
+# Weights & Biases Configuration
+wandb_project: "social-world-model-finetuning"
+wandb_run_name: "llama-3.1-8b-socialized-context-v1"
+
+# Output Configuration
+output_dir: "training/output"
