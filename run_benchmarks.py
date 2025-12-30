@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import logging
 import asyncio
-from sotopia.generation_utils import StrOutputParser, agenerate
+from social_world_model.generation_utils import StrOutputParser, agenerate
 from typing import Any, Literal, get_args, Optional, cast, List, Dict
 from rich.logging import RichHandler
 from social_world_model.social_world_model import SocialWorldModel

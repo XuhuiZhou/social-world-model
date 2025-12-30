@@ -6,7 +6,7 @@ from pathlib import Path
 import logging
 import asyncio
 from collections import Counter
-from sotopia.generation_utils import StrOutputParser, agenerate
+from social_world_model.generation_utils import StrOutputParser, agenerate
 from typing import Any, cast
 from rich.logging import RichHandler
 from social_world_model.task_modules import (

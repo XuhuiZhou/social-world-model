@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from rich.progress import track
-from sotopia.generation_utils import PydanticOutputParser
+from social_world_model.generation_utils import PydanticOutputParser
 from social_world_model.database import SocializedContextForModel
 from social_world_model.task_modules.tomi import TOMI_SOCIALIZED_CONTEXT_PROMPT
 

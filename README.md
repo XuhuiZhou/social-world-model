@@ -1,33 +1,130 @@
 # social-world-model
 use social simulation as a world model
-You need to set the environment variable `OPENAI_API_KEY` to use the API.
-You also need to `pip install uv` to run the following setup.
-You also need to have a `data` folder in the root of the project.
-And I think you are good to go.
-Let me know if you run into any issues.
 
 ## Setup
 
+### 1. Install uv
 ```bash
+pip install uv
+```
+
+### 2. Install Dependencies
+```bash
+# For basic API-based inference
 uv sync --all-extras
+
+# For offline inference with vLLM and training with wandb
+uv sync --extra training
+```
+
+### 3. Configure Environment Variables
+Create a `.env` file in the project root with your API keys:
+
+```bash
+# OpenAI API Key (required for OpenAI models like GPT-4)
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Together AI API Key (required for Together AI models like DeepSeek-R1)
+TOGETHER_API_KEY=your-together-api-key-here
+
+# Weights & Biases API Key (optional, for training tracking)
+WANDB_API_KEY=your-wandb-api-key-here
+
+# Storage backend: "redis" or "local"
+SOTOPIA_STORAGE_BACKEND=local
+```
+
+**Note:** For offline vLLM inference, you don't need API keys - vLLM runs models locally on GPU.
+
+### 4. Create Data Folder
+```bash
+mkdir -p data
 ```
 
 ## Run ToM Benchmarks
 
-```bash
-uv run python run_benchmarks.py --help
-```
-to get to know the options.
+All commands should be run with `--env-file .env` to load your API keys:
 
 ```bash
-uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=8 --save --model-name="together_ai/deepseek-ai/DeepSeek-R1" --mode="vanilla"
+# Get help on available options
+uv run --env-file .env python run_benchmarks.py --help
 ```
 
-or
+### Example: Run with API-based models
 
 ```bash
-uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation"
+# Using Together AI with DeepSeek-R1
+uv run --env-file .env python run_benchmarks.py tomi \
+  --dataset-path=data/rephrased_tomi_test_600.csv \
+  --batch-size=8 \
+  --save \
+  --model-name=together_ai/deepseek-ai/DeepSeek-R1 \
+  --mode=vanilla
 ```
+
+```bash
+# Using OpenAI's o1 model with simulation mode
+uv run --env-file .env python run_benchmarks.py tomi \
+  --dataset-path=data/rephrased_tomi_test_600.csv \
+  --batch-size=1 \
+  --save \
+  --model-name=o1-2024-12-17 \
+  --mode=simulation
+```
+
+## Offline Inference with vLLM
+
+The social-world-model now supports offline inference using vLLM for running models locally on GPU without API calls.
+
+### Installation
+
+```bash
+# Install with training dependencies (includes vLLM and wandb)
+uv sync --extra training
+```
+
+### Usage
+
+Simply prefix your model name with `vllm/`:
+
+```python
+from social_world_model.generation_utils import agenerate, StrOutputParser
+
+# Offline inference with local model
+response = await agenerate(
+    model_name="vllm/microsoft/Phi-4-mini-instruct",
+    template="Question: {question}\nAnswer: ",
+    input_values={"question": "What is Theory of Mind?"},
+    output_parser=StrOutputParser(),
+    temperature=0.7,
+)
+```
+
+### Supported Models
+
+- `vllm/microsoft/Phi-4-mini-instruct` (recommended, 14B parameters)
+- Any HuggingFace model compatible with vLLM
+
+### GPU Requirements
+
+- NVIDIA GPU with CUDA support
+- Minimum 16GB VRAM for Phi-4-mini-instruct
+- Recommended: 24GB+ VRAM for optimal performance
+
+### Running Benchmarks with vLLM
+
+```bash
+uv run --env-file .env python run_benchmarks.py tomi \
+  --dataset-path=data/rephrased_tomi_test_600.csv \
+  --batch-size=8 \
+  --save \
+  --model-name=vllm/microsoft/Phi-4-mini-instruct \
+  --mode=vanilla
+```
+
+**Note:**
+- Model loading takes 30-60 seconds on first use, but subsequent calls are fast (<1s) as the model is cached in GPU memory
+- No API keys needed for offline vLLM inference!
 
 ## To Simply Evaluate after running the benchmarks
 

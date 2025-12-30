@@ -16,7 +16,6 @@ dependencies = [
     "matplotlib>=3.10.3",
     "seaborn>=0.13.2",
     "together>=1.0.0",
-    "wandb>=0.16.0",
     "pyyaml>=6.0",
     "typer>=0.9.0",
     "rich>=13.0.0",
@@ -28,6 +27,10 @@ build-backend = "hatchling.build"
 
 [project.optional-dependencies]
 test = ["pytest>=7.0.0", "pytest-cov>=4.0.0", "pytest-asyncio>=0.21.0"]
+training = [
+    "wandb>=0.16.0",
+    "vllm>=0.6.0",
+]
 
 [tool.uv]
 dev-dependencies = [

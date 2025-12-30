@@ -15,11 +15,36 @@ pip install uv
 # Install dependencies
 uv sync --all-extras
 
-# Set required environment variable
+# OR: Install with training dependencies (includes vLLM for offline inference and wandb)
+uv sync --extra training
+
+# Set required environment variable (for API-based models)
 export OPENAI_API_KEY="your-key-here"
 ```
 
 **Required:** A `data` folder must exist in the project root.
+
+### Offline Inference with vLLM
+
+The project supports offline model inference using vLLM for GPU-accelerated local models:
+
+```bash
+# Install with vLLM support
+uv sync --extra training
+
+# Use offline models by prefixing with "vllm/"
+uv run python run_benchmarks.py "tomi" \
+  --dataset-path="data/rephrased_tomi_test_600.csv" \
+  --batch-size=8 \
+  --save \
+  --model-name="vllm/microsoft/Phi-4-mini-instruct" \
+  --mode="vanilla"
+```
+
+**GPU Requirements for vLLM:**
+- NVIDIA GPU with CUDA support
+- Minimum 16GB VRAM for Phi-4-mini-instruct
+- First model load: 30-60s (cached thereafter)
 
 ## Common Commands
 
