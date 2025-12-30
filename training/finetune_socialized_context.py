@@ -212,7 +212,18 @@ class TogetherAIFineTuner:
                 # Log new events
                 if len(events) > last_event_count:
                     for event in events[last_event_count:]:
-                        event_dict = event.model_dump() if hasattr(event, 'model_dump') else event.__dict__
+                        # Handle different event formats (dict, object, tuple)
+                        if isinstance(event, dict):
+                            event_dict = event
+                        elif hasattr(event, 'model_dump'):
+                            event_dict = event.model_dump()
+                        elif hasattr(event, '__dict__'):
+                            event_dict = event.__dict__
+                        elif isinstance(event, tuple):
+                            # Skip tuple events that can't be converted
+                            continue
+                        else:
+                            continue
 
                         # Log metrics if available
                         if self.wandb_run:
@@ -233,8 +244,9 @@ class TogetherAIFineTuner:
             # Display status
             print(f"Status: {status} (checked at {time.strftime('%H:%M:%S')})")
 
-            # Check if job is complete
-            if status in ["succeeded", "failed", "cancelled"]:
+            # Check if job is complete (handle both string and enum status)
+            status_str = str(status).lower()
+            if any(s in status_str for s in ["succeeded", "failed", "cancelled", "completed"]):
                 break
 
             # Wait before next check
