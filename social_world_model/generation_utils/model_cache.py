@@ -1,5 +1,6 @@
 """Model loading and caching for offline inference."""
 
+import atexit
 import logging
 from typing import Optional
 
@@ -76,9 +77,34 @@ class ModelCache:
         """Clear all cached models."""
         self._engines.clear()
 
+    def shutdown(self) -> None:
+        """Shutdown all cached vLLM engines gracefully."""
+        if not self._engines:
+            return
+
+        logger.info("Shutting down vLLM engines...")
+        for cache_key, engine in self._engines.items():
+            try:
+                # Attempt to shutdown the engine if method exists
+                if hasattr(engine, "shutdown"):
+                    engine.shutdown()
+                # Some versions use different cleanup methods
+                elif hasattr(engine.engine, "shutdown"):
+                    engine.engine.shutdown()
+                logger.debug(f"Successfully shut down engine: {cache_key}")
+            except Exception as e:
+                # Suppress errors during shutdown - this is best effort
+                logger.debug(f"Error during engine shutdown (ignoring): {e}")
+
+        self._engines.clear()
+        logger.info("All vLLM engines shut down")
+
 
 # Global cache instance
 _model_cache = ModelCache()
+
+# Register cleanup handler to shutdown engines on program exit
+atexit.register(_model_cache.shutdown)
 
 
 async def get_vllm_engine(
