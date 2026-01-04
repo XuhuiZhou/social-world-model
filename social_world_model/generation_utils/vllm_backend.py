@@ -1,5 +1,6 @@
 """vLLM backend implementation for offline inference."""
 
+import json
 import logging
 import uuid
 from typing import TypeVar
@@ -8,6 +9,7 @@ from pydantic import BaseModel
 
 try:
     from vllm import SamplingParams
+    from vllm.sampling_params import StructuredOutputsParams
 
     VLLM_AVAILABLE = True
 except ImportError:
@@ -77,20 +79,23 @@ async def agenerate_vllm(
     # Get or create vLLM engine
     engine = await get_vllm_engine(actual_model, **kwargs)
 
+    # Handle structured output for Pydantic models
+    structured_outputs_params = None
+    if structured_output and hasattr(output_parser, "pydantic_object"):
+        pydantic_obj = output_parser.pydantic_object
+        if isinstance(pydantic_obj, type) and issubclass(pydantic_obj, BaseModel):
+            # Use vLLM's structured outputs with JSON schema
+            schema = pydantic_obj.model_json_schema()
+            structured_outputs_params = StructuredOutputsParams(json=schema)
+            logger.info(f"Enabling structured JSON generation with schema: {schema}")
+
     # Configure sampling parameters
     sampling_params = SamplingParams(
         temperature=temperature if temperature is not None else 0.7,
         top_p=top_p,
         max_tokens=max_tokens,
+        structured_outputs=structured_outputs_params,
     )
-
-    # Handle structured output for Pydantic models
-    if structured_output and hasattr(output_parser, "pydantic_object"):
-        pydantic_obj = output_parser.pydantic_object
-        if isinstance(pydantic_obj, type) and issubclass(pydantic_obj, BaseModel):
-            # Use vLLM's guided generation with JSON schema
-            schema = pydantic_obj.model_json_schema()
-            sampling_params.guided_json = schema
 
     # Generate text using vLLM
     request_id = str(uuid.uuid4())
@@ -110,8 +115,19 @@ async def agenerate_vllm(
 
     # Extract generated text
     generated_text = final_output.outputs[0].text
+
     # Parse output
     try:
+        # If using structured output with guided JSON, parse as JSON directly
+        if structured_output and hasattr(output_parser, "pydantic_object"):
+            pydantic_obj = output_parser.pydantic_object
+            if isinstance(pydantic_obj, type) and issubclass(pydantic_obj, BaseModel):
+                # vLLM guided generation produces valid JSON
+                json_data = json.loads(generated_text)
+                parsed = pydantic_obj(**json_data)
+                return parsed
+
+        # Otherwise use the output parser's parse method
         parsed = output_parser.parse(generated_text)
         return parsed
     except Exception as e:

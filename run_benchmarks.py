@@ -6,7 +6,12 @@ import json
 from pathlib import Path
 import logging
 import asyncio
-from social_world_model.generation_utils import StrOutputParser, agenerate
+from social_world_model.generation_utils import (
+    StrOutputParser,
+    PydanticOutputParser,
+    agenerate,
+)
+from social_world_model.task_modules.response_models import BenchmarkResponse
 from typing import Any, Literal, get_args, Optional, cast, List, Dict
 from rich.logging import RichHandler
 from social_world_model.social_world_model import SocialWorldModel
@@ -229,7 +234,7 @@ class ToMBenchmarkRunner:
             template, input_values = prepare_mmtom_vanilla(
                 row, pure_context, with_reasoning=with_reasoning
             )
-        # Generate response
+        # Generate response with structured output
         for attempt in range(1, MAX_RETRIES + 1):
             try:
                 response = await agenerate(
@@ -237,8 +242,10 @@ class ToMBenchmarkRunner:
                     template=template,
                     input_values=input_values,
                     temperature=0.0,
-                    output_parser=StrOutputParser(),
-                    structured_output=False,
+                    output_parser=PydanticOutputParser(
+                        pydantic_object=BenchmarkResponse
+                    ),
+                    structured_output=True,
                 )
                 break
             except Exception as e:
@@ -246,28 +253,31 @@ class ToMBenchmarkRunner:
                     f"Error in generating response for index {row['index']} on attempt {attempt}: {e}"
                 )
                 if attempt == MAX_RETRIES:
-                    response = ""
+                    # Create empty response if all retries fail
+                    response = BenchmarkResponse(
+                        reasoning="Failed to generate response",
+                        answer="",
+                    )
                 else:
                     print("Retrying generating response...")
 
-        # Parse response and create result
+        # Convert Pydantic response to dict and create result
+        parsed_result = {
+            "reasoning": response.reasoning,
+            "answer": response.answer,
+        }
+
         if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
-            parsed_result = self._parse_response(response, row)
             result = create_tomi_result(parsed_result, row)
         elif benchmark_type == "fantom":
-            parsed_result = self._parse_response(response, row)
             result = create_fantom_result(parsed_result, row)
         elif benchmark_type == "confaide":
-            parsed_result = self._parse_response(response, row)
             result = create_confaide_result(parsed_result, row)
         elif benchmark_type == "cobra_frames":
-            parsed_result = self._parse_response(response, row)
             result = create_cobra_frames_result(parsed_result, row)
         elif benchmark_type == "hitom":
-            parsed_result = self._parse_response(response, row)
             result = create_hitom_result(parsed_result, row)
         elif benchmark_type == "mmtom":
-            parsed_result = self._parse_response(response, row)
             result = create_mmtom_result(parsed_result, row)
         return result
 
@@ -420,29 +430,6 @@ class ToMBenchmarkRunner:
         if not result:
             result = await self._run_vanilla(row, benchmark_type)
         return result
-
-    def _parse_response(self, response: str, row: dict[str, Any]) -> dict[str, Any]:
-        """Parse ToMi response and create result dictionary."""
-        try:
-            reasoning = (
-                response.split("<reasoning>")[1].split("</reasoning>")[0].strip()
-            )
-            answer = response.split("<answer>")[1].split("</answer>")[0].strip()
-        except Exception as e:
-            print(f"Failed to parse response: {e}")
-            reasoning = "Failed to parse reasoning"
-            # For MMTom, try to extract just the answer letter (a/b) if the full parsing fails
-            if "mmtom" in str(row.get("question_type", "")):
-                answer = response.strip().lower()[-1]  # Get last character
-                if answer not in ["a", "b"]:
-                    answer = "a"  # Default to a if not a valid answer
-            else:
-                answer = response
-
-        return {
-            "reasoning": reasoning,
-            "answer": answer,
-        }
 
     def _save_result(self, result: dict[str, Any], result_path: Path) -> None:
         """Save experiment result to file."""
