@@ -126,10 +126,61 @@ uv run --env-file .env python run_benchmarks.py tomi \
 - Model loading takes 30-60 seconds on first use, but subsequent calls are fast (<1s) as the model is cached in GPU memory
 - No API keys needed for offline vLLM inference!
 
-## To Simply Evaluate after running the benchmarks
+## Evaluating Socialized Contexts
+
+### Evaluate Benchmark Results (Task Accuracy)
+
+To evaluate the accuracy of model answers against ground truth:
 
 ```bash
-uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"
+# Continue from previous run and evaluate existing results
+uv run --env-file .env python run_benchmarks.py "tomi" \
+  --dataset-path="data/rephrased_tomi_test_600.csv" \
+  --batch-size=1 \
+  --save \
+  --model-name="o1-2024-12-17" \
+  --mode="simulation" \
+  --continue-mode="continue"
+```
+
+### Evaluate Socialized Context Quality (with Reference)
+
+To evaluate the quality of generated socialized contexts against ground truth references:
+
+```bash
+# Evaluate ToMi socialized contexts
+uv run --env-file .env python social_world_model/social_world_model_eval.py \
+  --gt-dir data/tomi_results/fixed_socialized_contexts \
+  --gen-dir data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_test_100.csv_o3-2025-04-16 \
+  --judge-model gpt-4o \
+  --batch-size 50 \
+  --output evaluation_results.md
+
+# Evaluate FANToM socialized contexts
+uv run --env-file .env python social_world_model/social_world_model_eval.py \
+  --gt-dir data/fantom_results/fixed_socialized_contexts \
+  --gen-dir data/fantom_results/socialized_context_[model]_[dataset]_[context_model] \
+  --judge-model gpt-4o
+
+# Evaluate HiToM socialized contexts
+uv run --env-file .env python social_world_model/social_world_model_eval.py \
+  --gt-dir data/hitom_results/fixed_socialized_contexts \
+  --gen-dir data/hitom_results/socialized_context_[model]_[dataset]_[context_model] \
+  --judge-model gpt-4o
+```
+
+**Evaluation Metrics:**
+- **Structural Score** (30%): Schema compliance, agent consistency, timestep format
+- **Observation Accuracy** (70%): LLM judge assesses if agents observe correct events based on their location
+- **Overall Score**: Weighted composite of structural + observation accuracy
+
+**Output Format:**
+```
+| File         | Structural | Observation Accuracy | Overall |
+|--------------|------------|----------------------|---------|
+| 1198         | 0.900      | 0.850                | 0.865   |
+| 1321         | 0.850      | 0.780                | 0.799   |
+| **Mean**     | 0.875      | 0.815                | 0.832   |
 ```
 
 

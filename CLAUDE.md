@@ -95,6 +95,107 @@ uv run python run_dynamic.py \
 uv run python run_benchmarks_agent_baselines.py
 ```
 
+### Evaluating Socialized Contexts
+
+The project includes an LLM-based evaluation system for assessing the quality of generated socialized contexts against ground truth references.
+
+#### Evaluation Script
+
+**Location**: `social_world_model/social_world_model_eval.py`
+
+#### How It Works
+
+The evaluation compares generated socialized contexts against manually curated ground truth contexts:
+
+1. **Structural Validation** (30% weight):
+   - Required fields: `agents_names`, `socialized_context`
+   - Agent consistency across timesteps
+   - Timestep format validation (sequential numbering)
+
+2. **Observation Accuracy** (70% weight):
+   - LLM judge evaluates if agents observe correct events
+   - Checks location-based observation constraints
+   - Assesses whether agents miss events from locations they've left
+   - Validates state and action accuracy
+
+#### Usage
+
+**Basic Usage:**
+```bash
+uv run --env-file .env python social_world_model/social_world_model_eval.py \
+  --gt-dir data/tomi_results/fixed_socialized_contexts \
+  --gen-dir data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_test_100.csv_o3-2025-04-16 \
+  --judge-model gpt-4o \
+  --batch-size 50 \
+  --output evaluation_results.md
+```
+
+**Arguments:**
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--gt-dir` | Yes | - | Directory with ground truth JSON files |
+| `--gen-dir` | Yes | - | Directory with generated JSON files (matching filenames) |
+| `--judge-model` | No | `gpt-4o` | LLM model for judging observation accuracy |
+| `--batch-size` | No | 100 | Number of parallel evaluations |
+| `--output` | No | stdout | Path to save markdown results |
+
+#### Ground Truth Locations
+
+Ground truth socialized contexts are stored in:
+- ToMi: `data/tomi_results/fixed_socialized_contexts/`
+- FANToM: `data/fantom_results/fixed_socialized_contexts/`
+- HiToM: `data/hitom_results/fixed_socialized_contexts/`
+
+#### Example Workflow
+
+**Step 1: Generate socialized contexts**
+```bash
+uv run --env-file .env python run_benchmarks.py "tomi" \
+  --dataset-path="data/rephrased_tomi_test_100.csv" \
+  --batch-size=8 \
+  --save \
+  --model-name="o3-2025-04-16" \
+  --mode="generate_socialized_context"
+```
+
+**Step 2: Evaluate against ground truth**
+```bash
+uv run --env-file .env python social_world_model/social_world_model_eval.py \
+  --gt-dir data/tomi_results/fixed_socialized_contexts \
+  --gen-dir data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_test_100.csv_o3-2025-04-16 \
+  --judge-model gpt-4o \
+  --output tomi_eval_o3.md
+```
+
+**Step 3: Review results**
+```bash
+cat tomi_eval_o3.md
+```
+
+#### Output Interpretation
+
+The evaluation produces a markdown table with:
+- **File ID**: Identifier for each context (from filename without .json)
+- **Structural Score**: 0.0-1.0, schema compliance rating
+- **Observation Accuracy**: 0.0-1.0, LLM judge assessment
+- **Overall Score**: Weighted composite (0.3 × structural + 0.7 × observation)
+- **Mean scores**: Average across all evaluated contexts
+- **Final Score**: Overall mean for the entire evaluation batch
+
+**Scoring Guidelines:**
+- **1.0**: Perfect - all observations correct, full schema compliance
+- **0.8-0.9**: Very good - minor issues
+- **0.6-0.7**: Good - some incorrect observations or schema issues
+- **0.4-0.5**: Fair - several problems
+- **0.0-0.3**: Poor - many errors
+
+#### Important Notes
+
+1. **File Matching**: Generated contexts must have identical filenames to ground truth files (e.g., `1198.json` in both directories)
+2. **API Key Required**: Evaluation uses LLM judge, requires API key for the judge model
+3. **Async Processing**: Evaluation runs in parallel batches for efficiency
+4. **Cost**: Each evaluation makes API calls; larger batch sizes = more cost but faster results
+
 ### Code Quality Checks
 
 ```bash
