@@ -57,7 +57,7 @@ exclude = ["data/*", "hidden_utils/*"]
 
 
 [tool.uv.sources]
-sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "redis-optional" }
+sotopia = { git = "https://github.com/sotopia-lab/sotopia" , branch = "main" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

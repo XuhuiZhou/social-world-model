@@ -7,11 +7,11 @@ contexts against ground truth.
 """
 
 from pydantic import BaseModel, Field
+import re
 import json
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional
-import argparse
 import asyncio
 from social_world_model.generation_utils import agenerate, StrOutputParser
 
@@ -41,6 +41,33 @@ class EvaluationResult(BaseModel):
 # ============================================================================
 # Structural Validation
 # ============================================================================
+
+def normalize_agent_data(data: dict | list) -> dict:
+    """
+    Normalize agent data from either dict or list format to dict format.
+    
+    Args:
+        data: Either a dict like {"AgentName": "value"} or 
+              a list like ["AgentName: value", ...]
+    
+    Returns:
+        Dictionary mapping agent names to values
+    """
+    if isinstance(data, dict):
+        return data
+    elif isinstance(data, list):
+        result = {}
+        for item in data:
+            if isinstance(item, str) and ":" in item:
+                # Parse "AgentName: value" format
+                parts = item.split(":", 1)
+                agent = parts[0].strip()
+                value = parts[1].strip() if len(parts) > 1 else ""
+                result[agent] = value
+        return result
+    else:
+        return {}
+
 
 def validate_structure(context_dict: dict) -> float:
     """
@@ -74,8 +101,11 @@ def validate_structure(context_dict: dict) -> float:
     # Check agent consistency across timesteps (40% of score)
     agent_consistency_score = 0.0
     for step in socialized_context:
-        obs_agents = set(step.get("observations", {}).keys())
-        act_agents = set(step.get("actions", {}).keys())
+        observations = normalize_agent_data(step.get("observations", {}))
+        actions = normalize_agent_data(step.get("actions", {}))
+        
+        obs_agents = set(observations.keys())
+        act_agents = set(actions.keys())
 
         if obs_agents == agents and act_agents == agents:
             agent_consistency_score += 1.0
@@ -115,11 +145,17 @@ def format_socialized_context(context_dict: dict) -> str:
         lines.append(f"Timestep {i+1}:")
         lines.append(f"  State: {step.get('state', 'N/A')}")
         lines.append("  Observations:")
-        for agent, obs in step.get("observations", {}).items():
+        
+        observations = normalize_agent_data(step.get("observations", {}))
+        for agent, obs in observations.items():
             lines.append(f"    {agent}: {obs}")
+        
         lines.append("  Actions:")
-        for agent, action in step.get("actions", {}).items():
+        
+        actions = normalize_agent_data(step.get("actions", {}))
+        for agent, action in actions.items():
             lines.append(f"    {agent}: {action}")
+        
         lines.append("")
     
     return "\n".join(lines)
@@ -210,7 +246,6 @@ Focus especially on whether agents observe things they shouldn't be able to obse
         
         # Parse JSON response
         # Try to extract JSON from response (might have markdown code blocks)
-        import re
         json_match = re.search(r'\{[^{}]*"score"[^{}]*"reasoning"[^{}]*\}', response, re.DOTALL)
         if json_match:
             result = json.loads(json_match.group(0))
@@ -281,35 +316,32 @@ async def evaluate_contexts_async(
     )
 
 
-def evaluate_contexts(
-    gt_dict: dict,
-    gen_dict: dict,
-    file_id: str = "unknown",
-    judge_model: str = "gpt-4o",
-) -> EvaluationResult:
-    """
-    Synchronous wrapper for async evaluation.
-    """
-    return asyncio.run(evaluate_contexts_async(gt_dict, gen_dict, file_id, judge_model))
+async def evaluate_file_pair(gt_file, gen_file, file_id, judge_model):
+    try:
+        # Load JSON files
+        with open(gt_file, 'r') as f:
+            gt_dict = json.load(f)
+        with open(gen_file, 'r') as f:
+            gen_dict = json.load(f)
+
+        # Evaluate
+        return await evaluate_contexts_async(gt_dict, gen_dict, file_id, judge_model)
+    except json.JSONDecodeError as e:
+        print(f"Error loading {file_id}: {e}")
+        return None
+    except Exception as e:
+        print(f"Error evaluating {file_id}: {e}")
+        return None
 
 
-async def evaluate_directory_async(
+async def _evaluate_directory_async(
     gt_dir: Path,
     gen_dir: Path,
-    judge_model: str = "gpt-4o",
-    batch_size: int = 100,
+    judge_model: str,
+    batch_size: int,
 ) -> str:
     """
-    Evaluate all matching JSON files in two directories using LLM judge.
-
-    Args:
-        gt_dir: Directory containing ground truth JSON files
-        gen_dir: Directory containing generated JSON files
-        judge_model: LLM model to use as judge
-        batch_size: Number of files to process in parallel (default: 100)
-
-    Returns:
-        Markdown table string with results
+    Async implementation of directory evaluation.
     """
     gt_dir = Path(gt_dir)
     gen_dir = Path(gen_dir)
@@ -338,41 +370,26 @@ async def evaluate_directory_async(
     # Process in batches
     results = []
     total_batches = (len(file_pairs) + batch_size - 1) // batch_size
-    
+
     for batch_idx in range(0, len(file_pairs), batch_size):
         batch = file_pairs[batch_idx:batch_idx + batch_size]
         batch_num = (batch_idx // batch_size) + 1
-        
+
         print(f"Processing batch {batch_num}/{total_batches} ({len(batch)} files)...")
-        
-        # Create async tasks for this batch
-        async def evaluate_file_pair(gt_file, gen_file, file_id):
-            try:
-                # Load JSON files
-                with open(gt_file, 'r') as f:
-                    gt_dict = json.load(f)
-                with open(gen_file, 'r') as f:
-                    gen_dict = json.load(f)
-                
-                # Evaluate
-                return await evaluate_contexts_async(gt_dict, gen_dict, file_id, judge_model)
-            except json.JSONDecodeError as e:
-                print(f"Error loading {file_id}: {e}")
-                return None
-            except Exception as e:
-                print(f"Error evaluating {file_id}: {e}")
-                return None
-        
+
         # Run batch in parallel
-        batch_results = await asyncio.gather(*[
-            evaluate_file_pair(gt_file, gen_file, file_id)
+        tasks = [
+            evaluate_file_pair(gt_file, gen_file, file_id, judge_model)
             for gt_file, gen_file, file_id in batch
-        ])
-        
+        ]
+        batch_results = await asyncio.gather(*tasks)
+
         # Filter out None results
         results.extend([r for r in batch_results if r is not None])
-        
+
         print(f"Batch {batch_num} complete. Total results: {len(results)}")
+
+    print(f"\nAll batches complete. Building markdown table for {len(results)} results...")
 
     if not results:
         return "No valid file pairs to evaluate."
@@ -405,6 +422,8 @@ async def evaluate_directory_async(
     # Combine all parts
     table = "\n".join([header] + rows + [mean_row, final_score_row])
 
+    print("Markdown table built successfully. Returning results...")
+
     return table
 
 
@@ -415,59 +434,15 @@ def evaluate_directory(
     batch_size: int = 100,
 ) -> str:
     """
-    Synchronous wrapper for async directory evaluation.
+    Evaluate all matching JSON files in two directories using LLM judge.
+
+    Args:
+        gt_dir: Directory containing ground truth JSON files
+        gen_dir: Directory containing generated JSON files
+        judge_model: LLM model to use as judge
+        batch_size: Number of files to process in parallel (default: 100)
+
+    Returns:
+        Markdown table string with results
     """
-    return asyncio.run(evaluate_directory_async(gt_dir, gen_dir, judge_model, batch_size))
-
-
-# ============================================================================
-# CLI Interface
-# ============================================================================
-
-def main():
-    """Command-line interface for evaluation"""
-    parser = argparse.ArgumentParser(
-        description="Evaluate socialized context generation quality using LLM judge"
-    )
-    parser.add_argument(
-        "--gt-dir",
-        required=True,
-        help="Directory containing ground truth JSON files"
-    )
-    parser.add_argument(
-        "--gen-dir",
-        required=True,
-        help="Directory containing generated JSON files"
-    )
-    parser.add_argument(
-        "--output",
-        default=None,
-        help="Output file path (optional, prints to stdout if not specified)"
-    )
-    parser.add_argument(
-        "--judge-model",
-        default="gpt-4o",
-        help="LLM model to use as judge (default: gpt-4o)"
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=100,
-        help="Number of files to process in parallel (default: 100)"
-    )
-
-    args = parser.parse_args()
-
-    # Evaluate
-    table = evaluate_directory(Path(args.gt_dir), Path(args.gen_dir), args.judge_model, args.batch_size)
-
-    # Output
-    if args.output:
-        Path(args.output).write_text(table)
-        print(f"Results saved to {args.output}")
-    else:
-        print(table)
-
-
-if __name__ == "__main__":
-    main()
+    return asyncio.run(_evaluate_directory_async(gt_dir, gen_dir, judge_model, batch_size))

@@ -149,24 +149,28 @@ To evaluate the quality of generated socialized contexts against ground truth re
 
 ```bash
 # Evaluate ToMi socialized contexts
-uv run --env-file .env python social_world_model/social_world_model_eval.py \
-  --gt-dir data/tomi_results/fixed_socialized_contexts \
-  --gen-dir data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_test_100.csv_o3-2025-04-16 \
-  --judge-model gpt-4o \
+uv run --env-file .env python run_socialized_context_eval.py \
+  --gt-dir data/tomi_results/socialized_context_groundtruth_rephrased_tomi_test_100.csv \
+  --gen-dir data/tomi_results/socialized_context_gpt-4o-2024-08-06_rephrased_tomi_test_100.csv_vllm/microsoft/Phi-4-mini-instruct \
+  --judge-model gpt-5-2025-08-07 \
   --batch-size 50 \
-  --output evaluation_results.md
+  --output tomi_eval_results.md
 
 # Evaluate FANToM socialized contexts
-uv run --env-file .env python social_world_model/social_world_model_eval.py \
+uv run --env-file .env python run_socialized_context_eval.py \
   --gt-dir data/fantom_results/fixed_socialized_contexts \
   --gen-dir data/fantom_results/socialized_context_[model]_[dataset]_[context_model] \
-  --judge-model gpt-4o
+  --judge-model gpt-5-2025-08-07 \
+  --batch-size 50 \
+  --output fantom_eval_results.md
 
 # Evaluate HiToM socialized contexts
-uv run --env-file .env python social_world_model/social_world_model_eval.py \
+uv run --env-file .env python run_socialized_context_eval.py \
   --gt-dir data/hitom_results/fixed_socialized_contexts \
   --gen-dir data/hitom_results/socialized_context_[model]_[dataset]_[context_model] \
-  --judge-model gpt-4o
+  --judge-model gpt-5-2025-08-07 \
+  --batch-size 50 \
+  --output hitom_eval_results.md
 ```
 
 **Evaluation Metrics:**
