@@ -551,7 +551,8 @@ class FantomEvalAgent:
                 -1: "irrelevant_response",
             }
             binary_wrong = {
-                error_mapping.get(cast(int, k), str(k)): v for k, v in binary_wrong.items()
+                error_mapping.get(cast(int, k), str(k)): v
+                for k, v in binary_wrong.items()
             }
             report[target_scenario + ":tom:binary:wrong_reasons:freq"] = binary_wrong  # type: ignore
 
