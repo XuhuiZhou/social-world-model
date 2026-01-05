@@ -63,8 +63,8 @@ class ModelCache:
                 trust_remote_code=trust_remote_code,
                 gpu_memory_utilization=gpu_memory_utilization,
                 max_model_len=max_model_len,
-                dtype=dtype,
-                **kwargs,
+                dtype=dtype,  # type: ignore[arg-type]
+                **kwargs,  # type: ignore[arg-type]
             )
 
             engine = AsyncLLMEngine.from_engine_args(engine_args)
@@ -87,10 +87,10 @@ class ModelCache:
             try:
                 # Attempt to shutdown the engine if method exists
                 if hasattr(engine, "shutdown"):
-                    engine.shutdown()
+                    engine.shutdown()  # type: ignore[no-untyped-call]
                 # Some versions use different cleanup methods
-                elif hasattr(engine.engine, "shutdown"):
-                    engine.engine.shutdown()
+                elif hasattr(engine.engine, "shutdown"):  # type: ignore[attr-defined]
+                    engine.engine.shutdown()  # type: ignore[attr-defined]
                 logger.debug(f"Successfully shut down engine: {cache_key}")
             except Exception as e:
                 # Suppress errors during shutdown - this is best effort
@@ -112,4 +112,4 @@ async def get_vllm_engine(
     **kwargs: object,
 ) -> "AsyncLLMEngine":
     """Helper function to get vLLM engine from cache."""
-    return await _model_cache.get_engine(model_name, **kwargs)
+    return await _model_cache.get_engine(model_name, **kwargs)  # type: ignore[arg-type]

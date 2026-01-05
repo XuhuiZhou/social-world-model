@@ -1,7 +1,7 @@
 from collections import Counter
 import pandas as pd
 from tqdm import tqdm
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from social_world_model.social_world_model import SocialWorldModel
 
 FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use <same_as_last_action /> in the state field to indicate that the state is the same as the last action."""
@@ -550,7 +550,10 @@ class FantomEvalAgent:
                 1: "false_positive",
                 -1: "irrelevant_response",
             }
-            binary_wrong = {error_mapping.get(k, k): v for k, v in binary_wrong.items()}
+            binary_wrong = {
+                error_mapping.get(cast(int, k), str(k)): v
+                for k, v in binary_wrong.items()
+            }
             report[target_scenario + ":tom:binary:wrong_reasons:freq"] = binary_wrong  # type: ignore
 
         # Analysis by ToM order type

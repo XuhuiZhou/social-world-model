@@ -7,7 +7,6 @@ from pathlib import Path
 import logging
 import asyncio
 from social_world_model.generation_utils import (
-    StrOutputParser,
     PydanticOutputParser,
     agenerate,
 )
@@ -237,7 +236,7 @@ class ToMBenchmarkRunner:
         # Generate response with structured output
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                response = await agenerate(
+                response: BenchmarkResponse = await agenerate(
                     model_name=self.model_name,
                     template=template,
                     input_values=input_values,

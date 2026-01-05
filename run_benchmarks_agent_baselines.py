@@ -76,16 +76,16 @@ class AgentBaselineRunner:
         template, input_values = prepare_tomi_vanilla(
             row, pure_context=False, with_reasoning=with_reasoning
         )
-        
+
         debate_history: list[dict[str, Any]] = []
-        
+
         # Step 1: Generate initial answers from 3 agents independently
         print(f"Generating initial answers from {NUM_DEBATE_AGENTS} agents...")
         initial_answers = []
         for agent_idx in range(NUM_DEBATE_AGENTS):
             for attempt in range(1, MAX_RETRIES + 1):
                 try:
-                    response = await agenerate(
+                    response: str = await agenerate(
                         model_name=self.model_name,
                         template=template,
                         input_values=input_values,
@@ -94,41 +94,43 @@ class AgentBaselineRunner:
                         structured_output=False,
                     )
                     parsed = self._parse_response(response, row)
-                    initial_answers.append({
-                        "agent": agent_idx,
-                        "round": 0,
-                        "reasoning": parsed["reasoning"],
-                        "answer": parsed["answer"],
-                        "full_response": response,
-                    })
+                    initial_answers.append(
+                        {
+                            "agent": agent_idx,
+                            "round": 0,
+                            "reasoning": parsed["reasoning"],
+                            "answer": parsed["answer"],
+                            "full_response": response,
+                        }
+                    )
                     break
                 except Exception as e:
                     print(
                         f"Error generating initial answer for agent {agent_idx} on attempt {attempt}: {e}"
                     )
                     if attempt == MAX_RETRIES:
-                        initial_answers.append({
-                            "agent": agent_idx,
-                            "round": 0,
-                            "reasoning": "Failed to generate",
-                            "answer": "",
-                            "full_response": "",
-                        })
-        
+                        initial_answers.append(
+                            {
+                                "agent": agent_idx,
+                                "round": 0,
+                                "reasoning": "Failed to generate",
+                                "answer": "",
+                                "full_response": "",
+                            }
+                        )
+
         debate_history.append({"round": 0, "answers": initial_answers})
-        
+
         # Step 2: Debate rounds - agents refine their answers based on others' responses
         current_answers = initial_answers
         for round_num in range(1, NUM_DEBATE_ROUNDS + 1):
             print(f"Debate round {round_num}/{NUM_DEBATE_ROUNDS}...")
             refined_answers = []
-            
             for agent_idx in range(NUM_DEBATE_AGENTS):
                 # Get other agents' answers from previous round
                 other_answers = [
                     ans for ans in current_answers if ans["agent"] != agent_idx
                 ]
-                
                 # Create critique/refinement prompt
                 critique_template = """{original_prompt}
 
@@ -143,17 +145,18 @@ Please review your own reasoning and answer in light of the other agents' perspe
 
 Provide your refined reasoning within the <reasoning></reasoning> tag. For the answer, use <answer>(put your answer here)</answer> and only include the most **detailed** location but not other information."""
 
-                other_responses_text = "\n\n".join([
-                    f"Agent {other_ans['agent'] + 1}'s reasoning:\n{other_ans['reasoning']}\n\nAgent {other_ans['agent'] + 1}'s answer: {other_ans['answer']}"
-                    for other_ans in other_answers
-                ])
-                
+                other_responses_text = "\n\n".join(
+                    [
+                        f"Agent {other_ans['agent'] + 1}'s reasoning:\n{other_ans['reasoning']}\n\nAgent {other_ans['agent'] + 1}'s answer: {other_ans['answer']}"
+                        for other_ans in other_answers
+                    ]
+                )
+
                 critique_input_values = {
                     **input_values,
                     "original_prompt": template.format(**input_values),
                     "other_agents_responses": other_responses_text,
                 }
-                
                 for attempt in range(1, MAX_RETRIES + 1):
                     try:
                         response = await agenerate(
@@ -165,13 +168,15 @@ Provide your refined reasoning within the <reasoning></reasoning> tag. For the a
                             structured_output=False,
                         )
                         parsed = self._parse_response(response, row)
-                        refined_answers.append({
-                            "agent": agent_idx,
-                            "round": round_num,
-                            "reasoning": parsed["reasoning"],
-                            "answer": parsed["answer"],
-                            "full_response": response,
-                        })
+                        refined_answers.append(
+                            {
+                                "agent": agent_idx,
+                                "round": round_num,
+                                "reasoning": parsed["reasoning"],
+                                "answer": parsed["answer"],
+                                "full_response": response,
+                            }
+                        )
                         break
                     except Exception as e:
                         print(
@@ -180,20 +185,28 @@ Provide your refined reasoning within the <reasoning></reasoning> tag. For the a
                         if attempt == MAX_RETRIES:
                             # Fall back to previous answer if refinement fails
                             prev_answer = next(
-                                (ans for ans in current_answers if ans["agent"] == agent_idx),
-                                current_answers[agent_idx] if agent_idx < len(current_answers) else initial_answers[agent_idx]
+                                (
+                                    ans
+                                    for ans in current_answers
+                                    if ans["agent"] == agent_idx
+                                ),
+                                current_answers[agent_idx]
+                                if agent_idx < len(current_answers)
+                                else initial_answers[agent_idx],
                             )
-                            refined_answers.append({
-                                "agent": agent_idx,
-                                "round": round_num,
-                                "reasoning": prev_answer["reasoning"],
-                                "answer": prev_answer["answer"],
-                                "full_response": prev_answer["full_response"],
-                            })
-            
+                            refined_answers.append(
+                                {
+                                    "agent": agent_idx,
+                                    "round": round_num,
+                                    "reasoning": prev_answer["reasoning"],
+                                    "answer": prev_answer["answer"],
+                                    "full_response": prev_answer["full_response"],
+                                }
+                            )
+
             current_answers = refined_answers
             debate_history.append({"round": round_num, "answers": refined_answers})
-        
+
         # Step 3: Generate consensus answer from final debate answers
         print("Generating consensus answer...")
         consensus_template = """{original_prompt}
@@ -206,18 +219,19 @@ Based on all the agents' reasoning and answers, please provide a final consensus
 
 Provide your consensus reasoning within the <reasoning></reasoning> tag. For the answer, use <answer>(put your answer here)</answer> and only include the most **detailed** location but not other information."""
 
-        final_responses_text = "\n\n".join([
-            f"Agent {ans['agent'] + 1}'s final reasoning:\n{ans['reasoning']}\n\nAgent {ans['agent'] + 1}'s final answer: {ans['answer']}"
-            for ans in current_answers
-        ])
-        
+        final_responses_text = "\n\n".join(
+            [
+                f"Agent {ans['agent'] + 1}'s final reasoning:\n{ans['reasoning']}\n\nAgent {ans['agent'] + 1}'s final answer: {ans['answer']}"
+                for ans in current_answers
+            ]
+        )
+
         consensus_input_values = {
             **input_values,
             "original_prompt": template.format(**input_values),
             "num_agents": NUM_DEBATE_AGENTS,
             "final_debate_responses": final_responses_text,
         }
-        
         consensus_response = ""
         consensus_generated = False
         for attempt in range(1, MAX_RETRIES + 1):
@@ -238,28 +252,32 @@ Provide your consensus reasoning within the <reasoning></reasoning> tag. For the
                 )
                 if attempt == MAX_RETRIES:
                     # Fallback: use the most common answer from final debate round
-                    print("Consensus generation failed after all retries, falling back to majority vote from debate answers...")
+                    print(
+                        "Consensus generation failed after all retries, falling back to majority vote from debate answers..."
+                    )
                     answers = [ans["answer"].strip().lower() for ans in current_answers]
                     answer_counts = Counter(answers)
                     most_common_answer = answer_counts.most_common(1)[0][0]
                     # Find reasoning from an agent with the most common answer
                     most_common_reasoning = next(
-                        (ans["reasoning"] for ans in current_answers if ans["answer"].strip().lower() == most_common_answer),
-                        "Consensus generation failed. Using majority answer from debate rounds."
+                        (
+                            ans["reasoning"]
+                            for ans in current_answers
+                            if ans["answer"].strip().lower() == most_common_answer
+                        ),
+                        "Consensus generation failed. Using majority answer from debate rounds.",
                     )
                     consensus_response = f"<reasoning>{most_common_reasoning}</reasoning>\n<answer>{most_common_answer}</answer>"
-        
+
         # Parse consensus response
         if not consensus_generated and consensus_response:
             print(f"Using fallback consensus: {consensus_response[:100]}...")
         parsed_consensus = self._parse_response(consensus_response, row)
-        
         # Create result with debate history
         result = create_tomi_result(parsed_consensus, row)
         result["debate_history"] = debate_history
         result["consensus_reasoning"] = parsed_consensus["reasoning"]
         result["consensus_answer"] = parsed_consensus["answer"]
-        
         return result
 
     async def run_single_experiment(
@@ -273,23 +291,24 @@ Provide your consensus reasoning within the <reasoning></reasoning> tag. For the
         result_path = Path(
             f"data/tomi_results/debate_{self.model_name.replace('/', '_').replace('.', '_')}/{self.dataset_name}/{row['index']}.json"
         )
-        
         # Check if result already exists in continue mode
         if continue_mode == "continue" and result_path.exists():
             with open(result_path, "r") as f:
                 result = dict(json.load(f))
                 return result
-        
+
         # Run debate experiment
         result = await self._run_debate(row)
-        
+
         # Save result if requested
         if save_result:
             # Ensure the main answer fields are set correctly for evaluation
-            result["reasoning"] = result.get("consensus_reasoning", result.get("reasoning", ""))
+            result["reasoning"] = result.get(
+                "consensus_reasoning", result.get("reasoning", "")
+            )
             result["answer"] = result.get("consensus_answer", result.get("answer", ""))
             self._save_result(result, result_path)
-        
+
         return result
 
 
@@ -318,7 +337,6 @@ def run_baseline(
 ) -> None:
     """Run agent debate baseline benchmarks for ToMI dataset."""
     dataset_name = dataset_path.split("/")[-1]
-    
     # Load dataset
     try:
         data = pd.read_csv(dataset_path).fillna("")
@@ -327,7 +345,6 @@ def run_baseline(
             data["index"] = data["index"].astype(str)
     except Exception as e:
         raise ValueError(f"Failed to load dataset: {e}")
-    
     asyncio.run(
         _run_baseline_benchmark(
             dataset_name=dataset_name,
@@ -353,17 +370,16 @@ async def _run_baseline_benchmark(
         model_name=model_name,
         dataset_name=dataset_name,
     )
-    
+
     print(f"Running ToMI benchmark in debate mode with {len(data)} examples")
     print(f"Using model: {model_name}")
-    
+
     all_results = []
     for i in range(0, len(data), batch_size):
         batch = data.iloc[i : i + batch_size].to_dict("records")
         print(
             f"\nProcessing batch {i//batch_size + 1}/{(len(data) + batch_size - 1)//batch_size}"
         )
-        
         tasks = [
             runner.run_single_experiment(
                 cast(dict[str, Any], row),
@@ -374,11 +390,9 @@ async def _run_baseline_benchmark(
         ]
         results = await asyncio.gather(*tasks)
         all_results.extend(results)
-    
     # Final evaluation report
     tomi_evaluation_report(all_results)
 
 
 if __name__ == "__main__":
     app()
-

@@ -125,11 +125,11 @@ async def agenerate_vllm(
                 # vLLM guided generation produces valid JSON
                 json_data = json.loads(generated_text)
                 parsed = pydantic_obj(**json_data)
-                return parsed
+                return parsed  # type: ignore[return-value]
 
         # Otherwise use the output parser's parse method
-        parsed = output_parser.parse(generated_text)
-        return parsed
+        parsed = output_parser.parse(generated_text)  # type: ignore[attr-defined]
+        return parsed  # type: ignore[no-any-return]
     except Exception as e:
         logger.error(f"Failed to parse vLLM output: {e}")
         logger.error(f"Generated text: {generated_text}")

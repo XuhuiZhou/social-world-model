@@ -2,15 +2,15 @@
 
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
 
 import typer
 import wandb
-import yaml
+import yaml  # type: ignore
 from rich import print
-from together import Together
+from together import Together  # type: ignore
 
 from data_utils import (
     create_training_format,
@@ -54,7 +54,7 @@ class TogetherAIFineTuner:
                 "Please set it with: export TOGETHER_API_KEY='your-key'"
             )
         self.client = Together(api_key=api_key)
-        self.wandb_run = None
+        self.wandb_run: Optional[wandb.sdk.wandb_run.Run] = None
 
     def prepare_data(self) -> Tuple[Path, Path]:
         """
@@ -89,7 +89,7 @@ class TogetherAIFineTuner:
         save_to_jsonl(train_records, train_path)
         save_to_jsonl(val_records, val_path)
 
-        print(f"\n[green]✓[/green] Data preparation complete")
+        print("\n[green]✓[/green] Data preparation complete")
         print(f"  Train: {train_path} ({len(train_records)} samples)")
         print(f"  Val: {val_path} ({len(val_records)} samples)")
 
@@ -178,7 +178,7 @@ class TogetherAIFineTuner:
         if self.wandb_run:
             wandb.log({"job_id": job.id})
 
-        return job.id
+        return str(job.id)
 
     def monitor_job(self, job_id: str) -> str:
         """
@@ -215,9 +215,9 @@ class TogetherAIFineTuner:
                         # Handle different event formats (dict, object, tuple)
                         if isinstance(event, dict):
                             event_dict = event
-                        elif hasattr(event, 'model_dump'):
+                        elif hasattr(event, "model_dump"):
                             event_dict = event.model_dump()
-                        elif hasattr(event, '__dict__'):
+                        elif hasattr(event, "__dict__"):
                             event_dict = event.__dict__
                         elif isinstance(event, tuple):
                             # Skip tuple events that can't be converted
@@ -246,7 +246,10 @@ class TogetherAIFineTuner:
 
             # Check if job is complete (handle both string and enum status)
             status_str = str(status).lower()
-            if any(s in status_str for s in ["succeeded", "failed", "cancelled", "completed"]):
+            if any(
+                s in status_str
+                for s in ["succeeded", "failed", "cancelled", "completed"]
+            ):
                 break
 
             # Wait before next check
@@ -254,8 +257,8 @@ class TogetherAIFineTuner:
 
         # Handle completion
         if status == "succeeded":
-            model_name = job.fine_tuned_model
-            print(f"\n[green bold]✓ Fine-tuning completed successfully![/green bold]")
+            model_name = str(job.fine_tuned_model)
+            print("\n[green bold]✓ Fine-tuning completed successfully![/green bold]")
             print(f"Model: {model_name}")
 
             if self.wandb_run:
@@ -346,7 +349,7 @@ def finetune(
     print("[bold green]Fine-tuning Complete![/bold green]")
     print("=" * 60)
     print(f"\nModel name: [bold]{model_name}[/bold]")
-    print(f"\nTo use in your code:")
+    print("\nTo use in your code:")
     print(f'  model_name="together_ai/{model_name}"')
     print("\nExample usage:")
     print("  from social_world_model.generation_utils import agenerate")

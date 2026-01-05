@@ -62,7 +62,9 @@ def load_socialized_contexts(data_dir: str) -> List[Dict[str, Any]]:
     return records
 
 
-def convert_dict_to_list_format(socialized_context_dict: Dict[str, Any]) -> Dict[str, Any]:
+def convert_dict_to_list_format(
+    socialized_context_dict: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Convert SocializedContext (dict format) to SocializedContextForModel (list format).
 
@@ -84,27 +86,25 @@ def convert_dict_to_list_format(socialized_context_dict: Dict[str, Any]) -> Dict
     """
     result = {
         "agents_names": socialized_context_dict["agents_names"],
-        "socialized_context": []
+        "socialized_context": [],
     }
 
     for timestep in socialized_context_dict["socialized_context"]:
         # Convert observations dict → list
         observations_list = [
-            f"{agent}: {obs}"
-            for agent, obs in timestep["observations"].items()
+            f"{agent}: {obs}" for agent, obs in timestep["observations"].items()
         ]
 
         # Convert actions dict → list
         actions_list = [
-            f"{agent}: {action}"
-            for agent, action in timestep["actions"].items()
+            f"{agent}: {action}" for agent, action in timestep["actions"].items()
         ]
 
         converted_timestep = {
             "timestep": timestep["timestep"],
             "state": timestep["state"],
             "observations": observations_list,
-            "actions": actions_list
+            "actions": actions_list,
         }
 
         result["socialized_context"].append(converted_timestep)
@@ -154,14 +154,14 @@ def create_training_format(record: Dict[str, Any]) -> Dict[str, List[Dict[str, s
     user_message = template.format(
         context=story,
         task_specific_instructions=TOMI_SOCIALIZED_CONTEXT_PROMPT,
-        format_instructions=format_instructions
+        format_instructions=format_instructions,
     )
 
     # Extract socialized_context and convert to list format
     # (SocializedContextForModel format - what the model generates)
     context_dict = {
         "agents_names": record["socialized_context"]["agents_names"],
-        "socialized_context": record["socialized_context"]["socialized_context"]
+        "socialized_context": record["socialized_context"]["socialized_context"],
     }
 
     # Convert dict format → list format (reverse of dictlize())
@@ -170,23 +170,15 @@ def create_training_format(record: Dict[str, Any]) -> Dict[str, List[Dict[str, s
     # Build messages: user (template) + assistant (list-format JSON)
     # NO system message - this matches actual agenerate() behavior
     messages = [
-        {
-            "role": "user",
-            "content": user_message
-        },
-        {
-            "role": "assistant",
-            "content": json.dumps(context_list_format, indent=2)
-        }
+        {"role": "user", "content": user_message},
+        {"role": "assistant", "content": json.dumps(context_list_format, indent=2)},
     ]
 
     return {"messages": messages}
 
 
 def train_val_split(
-    records: List[Dict[str, Any]],
-    val_ratio: float = 0.1,
-    seed: int = 42
+    records: List[Dict[str, Any]], val_ratio: float = 0.1, seed: int = 42
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Split records into train and validation sets.
@@ -225,8 +217,8 @@ def save_to_jsonl(records: List[Dict[str, Any]], output_path: Path) -> None:
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         for record in track(records, description=f"Writing {output_path.name}"):
-            f.write(json.dumps(record) + '\n')
+            f.write(json.dumps(record) + "\n")
 
     print(f"Saved {len(records)} records to {output_path}")
