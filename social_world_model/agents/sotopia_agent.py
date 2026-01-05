@@ -1,7 +1,8 @@
 from sotopia.agents import LLMAgent
 from sotopia.database import AgentProfile
 from sotopia.messages import AgentAction, Observation
-from sotopia.generation_utils import agenerate, agenerate_action
+from social_world_model.generation_utils import agenerate
+from sotopia.generation_utils import agenerate_action
 from social_world_model.database import SocializedContext, SocializedStructure
 from social_world_model.social_world_model import SocialWorldModel
 from typing import Optional
@@ -9,7 +10,7 @@ import logging
 from pydantic import validate_call
 from sotopia.messages import ActionType
 from rich.logging import RichHandler
-from sotopia.generation_utils.output_parsers import PydanticOutputParser
+from social_world_model.generation_utils import PydanticOutputParser
 
 # Configure logger
 log = logging.getLogger("social_world_model.agent")

@@ -1,5 +1,8 @@
 from typing import Dict, List, Tuple
-from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
+from social_world_model.generation_utils import (
+    PydanticOutputParser,
+    StrOutputParser,
+)
 from pydantic import BaseModel, Field
 from social_world_model.database import (
     Observation,
@@ -9,7 +12,7 @@ from social_world_model.database import (
     SocialSimulation,
     SocializedStructureForModel,
 )
-from sotopia.generation_utils import agenerate
+from social_world_model.generation_utils import agenerate
 from social_world_model.engine import (
     dictlize,
     dictlize_socialized_structure,

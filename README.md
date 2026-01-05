@@ -1,38 +1,190 @@
 # social-world-model
 use social simulation as a world model
-You need to set the environment variable `OPENAI_API_KEY` to use the API.
-You also need to `pip install uv` to run the following setup.
-You also need to have a `data` folder in the root of the project.
-And I think you are good to go.
-Let me know if you run into any issues.
 
 ## Setup
 
+### 1. Install uv
 ```bash
+pip install uv
+```
+
+### 2. Install Dependencies
+```bash
+# For basic API-based inference
 uv sync --all-extras
+
+# For offline inference with vLLM and training with wandb
+uv sync --extra training
+```
+
+### 3. Configure Environment Variables
+Create a `.env` file in the project root with your API keys:
+
+```bash
+# OpenAI API Key (required for OpenAI models like GPT-4)
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Together AI API Key (required for Together AI models like DeepSeek-R1)
+TOGETHER_API_KEY=your-together-api-key-here
+
+# Weights & Biases API Key (optional, for training tracking)
+WANDB_API_KEY=your-wandb-api-key-here
+
+# Storage backend: "redis" or "local"
+SOTOPIA_STORAGE_BACKEND=local
+```
+
+**Note:** For offline vLLM inference, you don't need API keys - vLLM runs models locally on GPU.
+
+### 4. Create Data Folder
+```bash
+mkdir -p data
 ```
 
 ## Run ToM Benchmarks
 
-```bash
-uv run python run_benchmarks.py --help
-```
-to get to know the options.
+All commands should be run with `--env-file .env` to load your API keys:
 
 ```bash
-uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=8 --save --model-name="together_ai/deepseek-ai/DeepSeek-R1" --mode="vanilla"
+# Get help on available options
+uv run --env-file .env python run_benchmarks.py --help
 ```
 
-or
+### Example: Run with API-based models
 
 ```bash
-uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation"
+# Using Together AI with DeepSeek-R1
+uv run --env-file .env python run_benchmarks.py tomi \
+  --dataset-path=data/rephrased_tomi_test_600.csv \
+  --batch-size=8 \
+  --save \
+  --model-name=together_ai/deepseek-ai/DeepSeek-R1 \
+  --mode=vanilla
 ```
 
-## To Simply Evaluate after running the benchmarks
+```bash
+# Using OpenAI's o1 model with simulation mode
+uv run --env-file .env python run_benchmarks.py tomi \
+  --dataset-path=data/rephrased_tomi_test_600.csv \
+  --batch-size=1 \
+  --save \
+  --model-name=o1-2024-12-17 \
+  --mode=simulation
+```
+
+## Offline Inference with vLLM
+
+The social-world-model now supports offline inference using vLLM for running models locally on GPU without API calls.
+
+### Installation
 
 ```bash
-uv run python run_benchmarks.py "tomi" --dataset-path="data/rephrased_tomi_test_600.csv" --batch-size=1 --save --model-name="o1-2024-12-17" --mode="simulation" --continue-mode="continue"
+# Install with training dependencies (includes vLLM and wandb)
+uv sync --extra training
+```
+
+### Usage
+
+Simply prefix your model name with `vllm/`:
+
+```python
+from social_world_model.generation_utils import agenerate, StrOutputParser
+
+# Offline inference with local model
+response = await agenerate(
+    model_name="vllm/microsoft/Phi-4-mini-instruct",
+    template="Question: {question}\nAnswer: ",
+    input_values={"question": "What is Theory of Mind?"},
+    output_parser=StrOutputParser(),
+    temperature=0.7,
+)
+```
+
+### Supported Models
+
+- `vllm/microsoft/Phi-4-mini-instruct` (recommended, 14B parameters)
+- Any HuggingFace model compatible with vLLM
+
+### GPU Requirements
+
+- NVIDIA GPU with CUDA support
+- Minimum 16GB VRAM for Phi-4-mini-instruct
+- Recommended: 24GB+ VRAM for optimal performance
+
+### Running Benchmarks with vLLM
+
+```bash
+uv run --env-file .env python run_benchmarks.py tomi \
+  --dataset-path=data/rephrased_tomi_test_600.csv \
+  --batch-size=8 \
+  --save \
+  --model-name=vllm/microsoft/Phi-4-mini-instruct \
+  --mode=vanilla
+```
+
+**Note:**
+- Model loading takes 30-60 seconds on first use, but subsequent calls are fast (<1s) as the model is cached in GPU memory
+- No API keys needed for offline vLLM inference!
+
+## Evaluating Socialized Contexts
+
+### Evaluate Benchmark Results (Task Accuracy)
+
+To evaluate the accuracy of model answers against ground truth:
+
+```bash
+# Continue from previous run and evaluate existing results
+uv run --env-file .env python run_benchmarks.py "tomi" \
+  --dataset-path="data/rephrased_tomi_test_600.csv" \
+  --batch-size=1 \
+  --save \
+  --model-name="o1-2024-12-17" \
+  --mode="simulation" \
+  --continue-mode="continue"
+```
+
+### Evaluate Socialized Context Quality (with Reference)
+
+To evaluate the quality of generated socialized contexts against ground truth references:
+
+```bash
+# Evaluate ToMi socialized contexts
+uv run --env-file .env python run_socialized_context_eval.py \
+  --gt-dir data/tomi_results/socialized_context_groundtruth_rephrased_tomi_test_100.csv \
+  --gen-dir data/tomi_results/socialized_context_gpt-4o-2024-08-06_rephrased_tomi_test_100.csv_vllm/microsoft/Phi-4-mini-instruct \
+  --judge-model gpt-5-2025-08-07 \
+  --batch-size 50 \
+  --output tomi_eval_results.md
+
+# Evaluate FANToM socialized contexts
+uv run --env-file .env python run_socialized_context_eval.py \
+  --gt-dir data/fantom_results/fixed_socialized_contexts \
+  --gen-dir data/fantom_results/socialized_context_[model]_[dataset]_[context_model] \
+  --judge-model gpt-5-2025-08-07 \
+  --batch-size 50 \
+  --output fantom_eval_results.md
+
+# Evaluate HiToM socialized contexts
+uv run --env-file .env python run_socialized_context_eval.py \
+  --gt-dir data/hitom_results/fixed_socialized_contexts \
+  --gen-dir data/hitom_results/socialized_context_[model]_[dataset]_[context_model] \
+  --judge-model gpt-5-2025-08-07 \
+  --batch-size 50 \
+  --output hitom_eval_results.md
+```
+
+**Evaluation Metrics:**
+- **Structural Score** (30%): Schema compliance, agent consistency, timestep format
+- **Observation Accuracy** (70%): LLM judge assesses if agents observe correct events based on their location
+- **Overall Score**: Weighted composite of structural + observation accuracy
+
+**Output Format:**
+```
+| File         | Structural | Observation Accuracy | Overall |
+|--------------|------------|----------------------|---------|
+| 1198         | 0.900      | 0.850                | 0.865   |
+| 1321         | 0.850      | 0.780                | 0.799   |
+| **Mean**     | 0.875      | 0.815                | 0.832   |
 ```
 
 
