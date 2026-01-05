@@ -126,13 +126,11 @@ class AgentBaselineRunner:
         for round_num in range(1, NUM_DEBATE_ROUNDS + 1):
             print(f"Debate round {round_num}/{NUM_DEBATE_ROUNDS}...")
             refined_answers = []
-
             for agent_idx in range(NUM_DEBATE_AGENTS):
                 # Get other agents' answers from previous round
                 other_answers = [
                     ans for ans in current_answers if ans["agent"] != agent_idx
                 ]
-
                 # Create critique/refinement prompt
                 critique_template = """{original_prompt}
 
@@ -159,7 +157,6 @@ Provide your refined reasoning within the <reasoning></reasoning> tag. For the a
                     "original_prompt": template.format(**input_values),
                     "other_agents_responses": other_responses_text,
                 }
-
                 for attempt in range(1, MAX_RETRIES + 1):
                     try:
                         response = await agenerate(
@@ -235,7 +232,6 @@ Provide your consensus reasoning within the <reasoning></reasoning> tag. For the
             "num_agents": NUM_DEBATE_AGENTS,
             "final_debate_responses": final_responses_text,
         }
-
         consensus_response = ""
         consensus_generated = False
         for attempt in range(1, MAX_RETRIES + 1):
@@ -277,13 +273,11 @@ Provide your consensus reasoning within the <reasoning></reasoning> tag. For the
         if not consensus_generated and consensus_response:
             print(f"Using fallback consensus: {consensus_response[:100]}...")
         parsed_consensus = self._parse_response(consensus_response, row)
-
         # Create result with debate history
         result = create_tomi_result(parsed_consensus, row)
         result["debate_history"] = debate_history
         result["consensus_reasoning"] = parsed_consensus["reasoning"]
         result["consensus_answer"] = parsed_consensus["answer"]
-
         return result
 
     async def run_single_experiment(
@@ -297,7 +291,6 @@ Provide your consensus reasoning within the <reasoning></reasoning> tag. For the
         result_path = Path(
             f"data/tomi_results/debate_{self.model_name.replace('/', '_').replace('.', '_')}/{self.dataset_name}/{row['index']}.json"
         )
-
         # Check if result already exists in continue mode
         if continue_mode == "continue" and result_path.exists():
             with open(result_path, "r") as f:
@@ -344,7 +337,6 @@ def run_baseline(
 ) -> None:
     """Run agent debate baseline benchmarks for ToMI dataset."""
     dataset_name = dataset_path.split("/")[-1]
-
     # Load dataset
     try:
         data = pd.read_csv(dataset_path).fillna("")
@@ -353,7 +345,6 @@ def run_baseline(
             data["index"] = data["index"].astype(str)
     except Exception as e:
         raise ValueError(f"Failed to load dataset: {e}")
-
     asyncio.run(
         _run_baseline_benchmark(
             dataset_name=dataset_name,
@@ -389,7 +380,6 @@ async def _run_baseline_benchmark(
         print(
             f"\nProcessing batch {i//batch_size + 1}/{(len(data) + batch_size - 1)//batch_size}"
         )
-
         tasks = [
             runner.run_single_experiment(
                 cast(dict[str, Any], row),
@@ -400,7 +390,6 @@ async def _run_baseline_benchmark(
         ]
         results = await asyncio.gather(*tasks)
         all_results.extend(results)
-
     # Final evaluation report
     tomi_evaluation_report(all_results)
 

@@ -108,7 +108,6 @@ def validate_structure(context_dict: dict[str, Any]) -> float:
     for step in socialized_context:
         observations = normalize_agent_data(step.get("observations", {}))
         actions = normalize_agent_data(step.get("actions", {}))
-
         obs_agents = set(observations.keys())
         act_agents = set(actions.keys())
 
@@ -190,7 +189,6 @@ async def judge_observation_accuracy(
     """
     gt_formatted = format_socialized_context(gt_context)
     gen_formatted = format_socialized_context(gen_context)
-
     prompt = f"""You are evaluating a socialized context for a Theory of Mind (ToMI) task.
 
 **Task Story:**
