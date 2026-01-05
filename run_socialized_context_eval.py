@@ -11,19 +11,23 @@ import asyncio
 import json
 import numpy as np
 from pathlib import Path
-import sys
-from social_world_model.social_world_model_eval import evaluate_contexts_async
-from typing import Optional
+from social_world_model.social_world_model_eval import (
+    evaluate_contexts_async,
+    EvaluationResult,
+)
+from typing import Optional, Any
 
 
-async def evaluate_file_pair(gt_file, gen_file, file_id, judge_model):
+async def evaluate_file_pair(
+    gt_file: Path, gen_file: Path, file_id: str, judge_model: str
+) -> Optional[EvaluationResult]:
     """Evaluate a single file pair."""
     try:
         # Load JSON files
-        with open(gt_file, 'r') as f:
-            gt_dict = json.load(f)
-        with open(gen_file, 'r') as f:
-            gen_dict = json.load(f)
+        with open(gt_file, "r") as f:
+            gt_dict: dict[str, Any] = json.load(f)
+        with open(gen_file, "r") as f:
+            gen_dict: dict[str, Any] = json.load(f)
 
         # Evaluate
         return await evaluate_contexts_async(gt_dict, gen_dict, file_id, judge_model)
@@ -52,7 +56,8 @@ async def _evaluate_directory_async(
     gt_files = sorted(gt_dir.glob("*.json"))
 
     if not gt_files:
-        return "No JSON files found in ground truth directory."
+        print("No JSON files found in ground truth directory.")
+        return
 
     # Prepare file pairs
     file_pairs = []
@@ -68,14 +73,15 @@ async def _evaluate_directory_async(
         file_pairs.append((gt_file, gen_file, file_id))
 
     if not file_pairs:
-        return "No valid file pairs to evaluate."
+        print("No valid file pairs to evaluate.")
+        return
 
     # Process in batches
     results = []
     total_batches = (len(file_pairs) + batch_size - 1) // batch_size
 
     for batch_idx in range(0, len(file_pairs), batch_size):
-        batch = file_pairs[batch_idx:batch_idx + batch_size]
+        batch = file_pairs[batch_idx : batch_idx + batch_size]
         batch_num = (batch_idx // batch_size) + 1
 
         print(f"Processing batch {batch_num}/{total_batches} ({len(batch)} files)...")
@@ -92,10 +98,13 @@ async def _evaluate_directory_async(
 
         print(f"Batch {batch_num} complete. Total results: {len(results)}")
 
-    print(f"\nAll batches complete. Building markdown table for {len(results)} results...")
+    print(
+        f"\nAll batches complete. Building markdown table for {len(results)} results..."
+    )
 
     if not results:
-        return "No valid file pairs to evaluate."
+        print("No valid results from evaluation.")
+        return
 
     # Build markdown table
     header = (
@@ -118,13 +127,11 @@ async def _evaluate_directory_async(
     )
 
     # Final score row
-    final_score_row = (
-        f"| **Final Score** | - | - | **{mean_overall:.3f}** |"
-    )
+    final_score_row = f"| **Final Score** | - | - | **{mean_overall:.3f}** |"
 
     # Combine all parts
     table = "\n".join([header] + rows + [mean_row, final_score_row])
-    
+
     if output:
         Path(output).write_text(table)
         print(f"Results saved to {output}")
@@ -132,55 +139,52 @@ async def _evaluate_directory_async(
         print(table)
 
 
-
-def main():
+def main() -> None:
     """Command-line interface for evaluation"""
     parser = argparse.ArgumentParser(
         description="Evaluate socialized context generation quality using LLM judge"
     )
     parser.add_argument(
-        "--gt-dir",
-        required=True,
-        help="Directory containing ground truth JSON files"
+        "--gt-dir", required=True, help="Directory containing ground truth JSON files"
     )
     parser.add_argument(
-        "--gen-dir",
-        required=True,
-        help="Directory containing generated JSON files"
+        "--gen-dir", required=True, help="Directory containing generated JSON files"
     )
     parser.add_argument(
         "--output",
         default=None,
-        help="Output file path (optional, prints to stdout if not specified)"
+        help="Output file path (optional, prints to stdout if not specified)",
     )
     parser.add_argument(
         "--judge-model",
         default="gpt-4o",
-        help="LLM model to use as judge (default: gpt-4o)"
+        help="LLM model to use as judge (default: gpt-4o)",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=100,
-        help="Number of files to process in parallel (default: 100)"
+        help="Number of files to process in parallel (default: 100)",
     )
 
     args = parser.parse_args()
 
-    print(f"Starting evaluation...")
+    print("Starting evaluation...")
     print(f"Ground truth dir: {args.gt_dir}")
     print(f"Generated dir: {args.gen_dir}")
     print(f"Judge model: {args.judge_model}")
     print(f"Batch size: {args.batch_size}\n")
 
+    asyncio.run(
+        _evaluate_directory_async(
+            Path(args.gt_dir),
+            Path(args.gen_dir),
+            args.judge_model,
+            args.batch_size,
+            args.output,
+        )
+    )
 
-    asyncio.run(_evaluate_directory_async(
-        Path(args.gt_dir),
-        Path(args.gen_dir),
-        args.judge_model,
-        args.batch_size,
-        args.output
-    ))
 
 if __name__ == "__main__":
     main()

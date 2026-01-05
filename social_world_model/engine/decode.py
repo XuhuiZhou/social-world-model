@@ -1,12 +1,12 @@
 """
 Decode special tags in socialized contexts for evaluation.
 
-This module provides functions to resolve special tags like <same_as_state /> 
-and <same_as_last_action /> to their actual content, making it easier to 
+This module provides functions to resolve special tags like <same_as_state />
+and <same_as_last_action /> to their actual content, making it easier to
 compare socialized contexts using BLEU scores.
 """
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 import re
 
 
@@ -54,10 +54,10 @@ def decode_observation(
 
 
 def decode_timestep(
-    timestep: Dict,
+    timestep: Dict[str, Any],
     last_action: Optional[str] = None,
     last_action_agent: Optional[str] = None,
-) -> Dict:
+) -> Dict[str, Any]:
     """
     Decode a single timestep by resolving all special tags.
 
@@ -104,7 +104,7 @@ def decode_timestep(
     return decoded
 
 
-def decode_socialized_context_dict(context_dict: Dict) -> Dict:
+def decode_socialized_context_dict(context_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
     Decode an entire socialized context dictionary by resolving all special tags.
 
@@ -130,4 +130,3 @@ def decode_socialized_context_dict(context_dict: Dict) -> Dict:
 
     decoded["socialized_context"] = decoded_steps
     return decoded
-

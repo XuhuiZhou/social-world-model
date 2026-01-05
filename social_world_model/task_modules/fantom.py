@@ -550,7 +550,9 @@ class FantomEvalAgent:
                 1: "false_positive",
                 -1: "irrelevant_response",
             }
-            binary_wrong = {error_mapping.get(k, k): v for k, v in binary_wrong.items()}
+            binary_wrong = {
+                error_mapping.get(int(k), str(k)): v for k, v in binary_wrong.items()
+            }  # type: ignore[call-overload]
             report[target_scenario + ":tom:binary:wrong_reasons:freq"] = binary_wrong  # type: ignore
 
         # Analysis by ToM order type

@@ -62,7 +62,7 @@ async def agenerate(
         )
     else:
         # Route to sotopia for API-based models
-        return await sotopia_agenerate(
+        return await sotopia_agenerate(  # type: ignore[no-any-return]
             model_name=model_name,
             template=template,
             input_values=input_values,

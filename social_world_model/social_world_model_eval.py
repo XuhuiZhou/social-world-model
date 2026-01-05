@@ -11,7 +11,7 @@ import re
 import json
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Optional
 import asyncio
 from social_world_model.generation_utils import agenerate, StrOutputParser
 
@@ -20,11 +20,15 @@ from social_world_model.generation_utils import agenerate, StrOutputParser
 # Data Models
 # ============================================================================
 
+
 class EvaluationResult(BaseModel):
     """Result of evaluating a single context pair"""
+
     file_id: str = Field(description="Filename identifier")
     structural_score: float = Field(description="Schema compliance score (0-1)")
-    observation_accuracy: float = Field(description="LLM judge score for observation accuracy (0-1)")
+    observation_accuracy: float = Field(
+        description="LLM judge score for observation accuracy (0-1)"
+    )
     overall_score: float = Field(description="Composite score (0-1)")
     judge_reasoning: str = Field(description="Judge's reasoning for the score")
 
@@ -42,14 +46,15 @@ class EvaluationResult(BaseModel):
 # Structural Validation
 # ============================================================================
 
-def normalize_agent_data(data: dict | list) -> dict:
+
+def normalize_agent_data(data: dict[str, str] | list[str]) -> dict[str, str]:
     """
     Normalize agent data from either dict or list format to dict format.
-    
+
     Args:
-        data: Either a dict like {"AgentName": "value"} or 
+        data: Either a dict like {"AgentName": "value"} or
               a list like ["AgentName: value", ...]
-    
+
     Returns:
         Dictionary mapping agent names to values
     """
@@ -69,7 +74,7 @@ def normalize_agent_data(data: dict | list) -> dict:
         return {}
 
 
-def validate_structure(context_dict: dict) -> float:
+def validate_structure(context_dict: dict[str, Any]) -> float:
     """
     Validate schema compliance of a socialized context.
 
@@ -103,7 +108,7 @@ def validate_structure(context_dict: dict) -> float:
     for step in socialized_context:
         observations = normalize_agent_data(step.get("observations", {}))
         actions = normalize_agent_data(step.get("actions", {}))
-        
+
         obs_agents = set(observations.keys())
         act_agents = set(actions.keys())
 
@@ -117,8 +122,9 @@ def validate_structure(context_dict: dict) -> float:
     try:
         timesteps = [int(step.get("timestep", "0")) for step in socialized_context]
         # Check if sequential (allowing for 0-indexed or 1-indexed)
-        if timesteps == list(range(len(timesteps))) or \
-           timesteps == list(range(1, len(timesteps) + 1)):
+        if timesteps == list(range(len(timesteps))) or timesteps == list(
+            range(1, len(timesteps) + 1)
+        ):
             score += 0.3
         elif sorted(timesteps) == timesteps:  # At least monotonic
             score += 0.15
@@ -134,36 +140,37 @@ def validate_structure(context_dict: dict) -> float:
 # LLM Judge Evaluation
 # ============================================================================
 
-def format_socialized_context(context_dict: dict) -> str:
+
+def format_socialized_context(context_dict: dict[str, Any]) -> str:
     """Format socialized context as a readable string for the judge."""
     agents = context_dict.get("agents_names", [])
     steps = context_dict.get("socialized_context", [])
-    
+
     lines = [f"Agents: {', '.join(agents)}", ""]
-    
+
     for i, step in enumerate(steps):
         lines.append(f"Timestep {i+1}:")
         lines.append(f"  State: {step.get('state', 'N/A')}")
         lines.append("  Observations:")
-        
+
         observations = normalize_agent_data(step.get("observations", {}))
         for agent, obs in observations.items():
             lines.append(f"    {agent}: {obs}")
-        
+
         lines.append("  Actions:")
-        
+
         actions = normalize_agent_data(step.get("actions", {}))
         for agent, action in actions.items():
             lines.append(f"    {agent}: {action}")
-        
+
         lines.append("")
-    
+
     return "\n".join(lines)
 
 
 async def judge_observation_accuracy(
-    gt_context: dict,
-    gen_context: dict,
+    gt_context: dict[str, Any],
+    gen_context: dict[str, Any],
     story: str,
     question: str,
     model_name: str = "gpt-4o",
@@ -183,7 +190,7 @@ async def judge_observation_accuracy(
     """
     gt_formatted = format_socialized_context(gt_context)
     gen_formatted = format_socialized_context(gen_context)
-    
+
     prompt = f"""You are evaluating a socialized context for a Theory of Mind (ToMI) task.
 
 **Task Story:**
@@ -199,7 +206,7 @@ async def judge_observation_accuracy(
 {gen_formatted}
 
 **Your Task:**
-Evaluate whether the generated socialized context correctly captures what each agent should observe at each timestep. 
+Evaluate whether the generated socialized context correctly captures what each agent should observe at each timestep.
 
 **Key Evaluation Criteria:**
 1. **Observation Accuracy (MOST IMPORTANT)**: Do agents observe what they should observe based on:
@@ -236,33 +243,37 @@ Focus especially on whether agents observe things they shouldn't be able to obse
 """
 
     try:
-        response = await agenerate(
+        response: str = await agenerate(
             model_name=model_name,
             template=prompt,
             input_values={},
             output_parser=StrOutputParser(),
             structured_output=False,
         )
-        
+
         # Parse JSON response
         # Try to extract JSON from response (might have markdown code blocks)
-        json_match = re.search(r'\{[^{}]*"score"[^{}]*"reasoning"[^{}]*\}', response, re.DOTALL)
+        json_match = re.search(
+            r'\{[^{}]*"score"[^{}]*"reasoning"[^{}]*\}', response, re.DOTALL
+        )
         if json_match:
             result = json.loads(json_match.group(0))
         else:
             # Try to parse the whole response as JSON
             result = json.loads(response)
-        
+
         score = float(result.get("score", 0.0))
         reasoning = result.get("reasoning", "No reasoning provided")
-        
+
         # Clamp score to [0, 1]
         score = max(0.0, min(1.0, score))
-        
+
         return score, reasoning
     except Exception as e:
         print(f"Error in LLM judging: {e}")
-        print(f"Response was: {response[:500] if 'response' in locals() else 'No response'}")
+        print(
+            f"Response was: {response[:500] if 'response' in locals() else 'No response'}"
+        )
         return 0.0, f"Error: {str(e)}"
 
 
@@ -270,9 +281,10 @@ Focus especially on whether agents observe things they shouldn't be able to obse
 # Main Evaluation Logic
 # ============================================================================
 
+
 async def evaluate_contexts_async(
-    gt_dict: dict,
-    gen_dict: dict,
+    gt_dict: dict[str, Any],
+    gen_dict: dict[str, Any],
     file_id: str = "unknown",
     judge_model: str = "gpt-4o",
 ) -> EvaluationResult:
@@ -312,17 +324,19 @@ async def evaluate_contexts_async(
         structural_score=structural_score,
         observation_accuracy=observation_accuracy,
         overall_score=overall_score,
-        judge_reasoning=reasoning
+        judge_reasoning=reasoning,
     )
 
 
-async def evaluate_file_pair(gt_file, gen_file, file_id, judge_model):
+async def evaluate_file_pair(
+    gt_file: Path, gen_file: Path, file_id: str, judge_model: str
+) -> Optional[EvaluationResult]:
     try:
         # Load JSON files
-        with open(gt_file, 'r') as f:
-            gt_dict = json.load(f)
-        with open(gen_file, 'r') as f:
-            gen_dict = json.load(f)
+        with open(gt_file, "r") as f:
+            gt_dict: dict[str, Any] = json.load(f)
+        with open(gen_file, "r") as f:
+            gen_dict: dict[str, Any] = json.load(f)
 
         # Evaluate
         return await evaluate_contexts_async(gt_dict, gen_dict, file_id, judge_model)
@@ -372,7 +386,7 @@ async def _evaluate_directory_async(
     total_batches = (len(file_pairs) + batch_size - 1) // batch_size
 
     for batch_idx in range(0, len(file_pairs), batch_size):
-        batch = file_pairs[batch_idx:batch_idx + batch_size]
+        batch = file_pairs[batch_idx : batch_idx + batch_size]
         batch_num = (batch_idx // batch_size) + 1
 
         print(f"Processing batch {batch_num}/{total_batches} ({len(batch)} files)...")
@@ -389,7 +403,9 @@ async def _evaluate_directory_async(
 
         print(f"Batch {batch_num} complete. Total results: {len(results)}")
 
-    print(f"\nAll batches complete. Building markdown table for {len(results)} results...")
+    print(
+        f"\nAll batches complete. Building markdown table for {len(results)} results..."
+    )
 
     if not results:
         return "No valid file pairs to evaluate."
@@ -415,9 +431,7 @@ async def _evaluate_directory_async(
     )
 
     # Final score row
-    final_score_row = (
-        f"| **Final Score** | - | - | **{mean_overall:.3f}** |"
-    )
+    final_score_row = f"| **Final Score** | - | - | **{mean_overall:.3f}** |"
 
     # Combine all parts
     table = "\n".join([header] + rows + [mean_row, final_score_row])
@@ -445,4 +459,6 @@ def evaluate_directory(
     Returns:
         Markdown table string with results
     """
-    return asyncio.run(_evaluate_directory_async(gt_dir, gen_dir, judge_model, batch_size))
+    return asyncio.run(
+        _evaluate_directory_async(gt_dir, gen_dir, judge_model, batch_size)
+    )
