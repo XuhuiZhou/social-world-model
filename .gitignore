@@ -170,3 +170,4 @@ hidden_utils/*
 Experiments_doc.md
 
 wandb/*
+output/*
