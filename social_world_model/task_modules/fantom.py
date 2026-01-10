@@ -1,14 +1,14 @@
 from collections import Counter
 import pandas as pd
 from tqdm import tqdm
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from social_world_model.social_world_model import SocialWorldModel
 
 FANTOM_SOCIALIZED_CONTEXT_PROMPT = """You are analyzing a social conversation and need to answer a question about it. When the agents leave the conversation, they cannot perceive the conversation anymore untill they join the conversation again. For convenience, you can use <same_as_last_action /> in the state field to indicate that the state is the same as the last action."""
 
 
 def prepare_fantom_vanilla(
-    row: dict[str, Any], pure_context: bool = False
+    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True
 ) -> tuple[str, dict[str, Any]]:
     extra_info = row.get("extra_info", "")
     if extra_info:
@@ -19,8 +19,22 @@ def prepare_fantom_vanilla(
             context = row["context"]
     else:
         context = row["context"]
-    template = """
+
+    if with_reasoning:
+        template = """
 You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer>.
+
+## Context
+{context}
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+## Question
+{question}
+"""
+    else:
+        template = """
+You are analyzing a social conversation and need to answer a question about it. Assume that the characters do not know any other information than what is provided in the conversation. For the answer, use <answer>(put your answer here)</answer>.
 
 ## Context
 {context}
@@ -303,6 +317,11 @@ class FantomEvalAgent:
         assert len(qas) == len(
             predictions
         ), "Number of questions and model predictions should be the same."
+        # remove <answer> and </answer> from predictions if they exist
+        predictions = [
+            pred.replace("<answer>", "").replace("</answer>", "")
+            for pred in predictions
+        ]
         for qa, pred in tqdm(zip(qas, predictions), total=len(qas)):
             if qa["question_type"].startswith("tom:belief:"):
                 if qa["question_type"].endswith(":multiple-choice"):
@@ -531,7 +550,10 @@ class FantomEvalAgent:
                 1: "false_positive",
                 -1: "irrelevant_response",
             }
-            binary_wrong = {error_mapping.get(k, k): v for k, v in binary_wrong.items()}
+            binary_wrong = {
+                error_mapping.get(cast(int, k), str(k)): v
+                for k, v in binary_wrong.items()
+            }
             report[target_scenario + ":tom:binary:wrong_reasons:freq"] = binary_wrong  # type: ignore
 
         # Analysis by ToM order type

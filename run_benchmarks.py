@@ -6,8 +6,12 @@ import json
 from pathlib import Path
 import logging
 import asyncio
-from sotopia.generation_utils import StrOutputParser, agenerate
-from typing import Any, Literal, get_args, Optional, cast
+from social_world_model.generation_utils import (
+    PydanticOutputParser,
+    agenerate,
+)
+from social_world_model.task_modules.response_models import BenchmarkResponse
+from typing import Any, Literal, get_args, Optional, cast, List, Dict
 from rich.logging import RichHandler
 from social_world_model.social_world_model import SocialWorldModel
 from social_world_model.database import SocializedContext, SocialSimulation
@@ -38,6 +42,11 @@ from social_world_model.task_modules import (
     create_cobra_frames_result,
     cobra_frames_evaluation_report,
     HITOM_SOCIALIZED_CONTEXT_PROMPT,
+    mmtom_simulation,
+    prepare_mmtom_vanilla,
+    create_mmtom_result,
+    mmtom_evaluation_report,
+    MMTOM_SOCIALIZED_CONTEXT_PROMPT,
 )
 from social_world_model.engine import load_existing_socialized_contexts
 import typer
@@ -57,22 +66,35 @@ app = typer.Typer(pretty_exceptions_enable=False)
 ModeType = Literal[
     "vanilla",
     "socialized_context",
+    "few_shot_context",
+    "vanilla_no_reasoning",
+    "socialized_context_no_json",
     "pure_context",
     "simulation",
     "generate_socialized_context",
 ]
 ContextModeType = Literal["socialized_context", "simulation"]
 ContinueModeType = Literal["new", "continue"]
-BenchmarkType = Literal["tomi", "fantom", "confaide", "cobra_frames", "hitom"]
+BenchmarkType = Literal[
+    "tomi", "fantom", "confaide", "cobra_frames", "hitom", "ori_tomi", "mmtom"
+]
+
 SocializedContextPrompt = {
     "tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
     "fantom": FANTOM_SOCIALIZED_CONTEXT_PROMPT,
     "confaide": CONFAIDE_SOCIALIZED_CONTEXT_PROMPT,
     "hitom": HITOM_SOCIALIZED_CONTEXT_PROMPT,
     "cobra_frames": COBRA_FRAMES_SOCIALIZED_CONTEXT_PROMPT,
+    "ori_tomi": TOMI_SOCIALIZED_CONTEXT_PROMPT,
+    "mmtom": MMTOM_SOCIALIZED_CONTEXT_PROMPT,
 }
 
 MAX_RETRIES = 10
+
+
+def json_to_text(json_str: str) -> str:
+    # remove json structure and concatenate the keys and values to a text string
+    return " ".join([f"{k}: {v}" for k, v in json.loads(json_str).items()])
 
 
 class ToMBenchmarkRunner:
@@ -82,7 +104,7 @@ class ToMBenchmarkRunner:
         dataset_name: str = "tomi",
         existing_socialized_contexts_path: Optional[dict[str, Any]] = None,
         mode: str = "vanilla",
-        context_model: str = "o1-2024-12-17",
+        context_model: str = "o3-2025-04-16",
     ):
         self.model_name = model_name
         self.dataset_name = dataset_name
@@ -130,7 +152,7 @@ class ToMBenchmarkRunner:
 
         # Check for cached results if in continue mode
         if continue_mode == "continue" and result_path.exists():
-            print(f"Loading cached result for index {row['index']}")
+            # print(f"Loading cached result for index {row['index']}")
             with open(result_path) as f:
                 result = dict(json.load(f))
                 return result
@@ -138,6 +160,20 @@ class ToMBenchmarkRunner:
         # If no cached result or in new mode, run the experiment
         if mode == "vanilla":
             result = await self._run_vanilla(row, benchmark_type)
+        elif mode == "vanilla_no_reasoning":
+            result = await self._run_vanilla(row, benchmark_type, with_reasoning=False)
+        elif mode == "socialized_context_no_json":
+            result = await self._run_socialized_context(
+                row,
+                benchmark_type,
+                example_analysis_file,
+                engine=engine,
+                context_format="text",
+            )
+        elif mode == "few_shot_context":
+            result = await self._run_few_shot_context(
+                row, benchmark_type, example_analysis_file
+            )
         elif mode == "pure_context":
             result = await self._run_socialized_context(
                 row,
@@ -162,30 +198,53 @@ class ToMBenchmarkRunner:
         return result
 
     async def _run_vanilla(
-        self, row: dict[str, Any], benchmark_type: str, pure_context: bool = False
+        self,
+        row: dict[str, Any],
+        benchmark_type: str,
+        pure_context: bool = False,
+        context_format: Literal["json", "text"] = "json",
+        with_reasoning: bool = True,
     ) -> dict[str, Any]:
         """Run experiment in vanilla mode (direct LLM generation)."""
         # Prepare context and question based on benchmark type
-        if benchmark_type == "tomi":
-            template, input_values = prepare_tomi_vanilla(row, pure_context)
+        if context_format == "text":
+            row["extra_info"] = json_to_text(row["extra_info"])
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
+            template, input_values = prepare_tomi_vanilla(
+                row, pure_context, with_reasoning=with_reasoning
+            )
         elif benchmark_type == "fantom":  # fantom
-            template, input_values = prepare_fantom_vanilla(row, pure_context)
+            template, input_values = prepare_fantom_vanilla(
+                row, pure_context, with_reasoning=with_reasoning
+            )
         elif benchmark_type == "confaide":  # confaide
-            template, input_values = prepare_confaide_vanilla(row, pure_context)
+            template, input_values = prepare_confaide_vanilla(
+                row, pure_context, with_reasoning=with_reasoning
+            )
         elif benchmark_type == "cobra_frames":
-            template, input_values = prepare_cobra_frames_vanilla(row, pure_context)
+            template, input_values = prepare_cobra_frames_vanilla(
+                row, pure_context, with_reasoning=with_reasoning
+            )
         elif benchmark_type == "hitom":
-            template, input_values = prepare_hitom_vanilla(row, pure_context)
-        # Generate response
+            template, input_values = prepare_hitom_vanilla(
+                row, pure_context, with_reasoning=with_reasoning
+            )
+        elif benchmark_type == "mmtom":
+            template, input_values = prepare_mmtom_vanilla(
+                row, pure_context, with_reasoning=with_reasoning
+            )
+        # Generate response with structured output
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                response = await agenerate(
+                response: BenchmarkResponse = await agenerate(
                     model_name=self.model_name,
                     template=template,
                     input_values=input_values,
                     temperature=0.0,
-                    output_parser=StrOutputParser(),
-                    structured_output=False,
+                    output_parser=PydanticOutputParser(
+                        pydantic_object=BenchmarkResponse
+                    ),
+                    structured_output=True,
                 )
                 break
             except Exception as e:
@@ -193,26 +252,32 @@ class ToMBenchmarkRunner:
                     f"Error in generating response for index {row['index']} on attempt {attempt}: {e}"
                 )
                 if attempt == MAX_RETRIES:
-                    response = ""
+                    # Create empty response if all retries fail
+                    response = BenchmarkResponse(
+                        reasoning="Failed to generate response",
+                        answer="",
+                    )
                 else:
                     print("Retrying generating response...")
 
-        # Parse response and create result
-        if benchmark_type == "tomi":
-            parsed_result = self._parse_response(response, row)
+        # Convert Pydantic response to dict and create result
+        parsed_result = {
+            "reasoning": response.reasoning,
+            "answer": response.answer,
+        }
+
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             result = create_tomi_result(parsed_result, row)
         elif benchmark_type == "fantom":
-            parsed_result = self._parse_response(response, row)
             result = create_fantom_result(parsed_result, row)
         elif benchmark_type == "confaide":
-            parsed_result = self._parse_response(response, row)
             result = create_confaide_result(parsed_result, row)
         elif benchmark_type == "cobra_frames":
-            parsed_result = self._parse_response(response, row)
             result = create_cobra_frames_result(parsed_result, row)
         elif benchmark_type == "hitom":
-            parsed_result = self._parse_response(response, row)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "mmtom":
+            result = create_mmtom_result(parsed_result, row)
         return result
 
     async def _run_socialized_context(
@@ -222,6 +287,7 @@ class ToMBenchmarkRunner:
         example_analysis_file: str = "",
         pure_context: bool = False,
         engine: Optional[SocialWorldModel] = None,
+        context_format: Literal["json", "text"] = "json",
     ) -> dict[str, Any]:
         """Run experiment in socialized_context mode (using ToM engine for memory tracking)."""
         assert isinstance(
@@ -232,7 +298,7 @@ class ToMBenchmarkRunner:
         else:
             critic_and_improve = False
 
-        if benchmark_type == "tomi":
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             context = " ".join(eval(row["story"]))
         elif benchmark_type == "hitom":
             context = row["story"]
@@ -303,7 +369,28 @@ class ToMBenchmarkRunner:
                 engine.existing_socialized_contexts[row["index"]] = socialized_context
         row["socialized_context"] = socialized_context
         row["extra_info"] = socialized_context.to_natural_language()
-        result = await self._run_vanilla(row, benchmark_type, pure_context=pure_context)
+        result = await self._run_vanilla(
+            row,
+            benchmark_type,
+            pure_context=pure_context,
+            context_format=context_format,
+        )
+        return result
+
+    async def _run_few_shot_context(
+        self,
+        row: dict[str, Any],
+        benchmark_type: str,
+        example_analysis_file: str = "",
+        pure_context: bool = False,
+    ) -> dict[str, Any]:
+        """Run experiment in few-shot context mode (using ToM engine for memory tracking)."""
+        row["extra_info"] = json.load(open("./data/few_shot_context.json")).get(
+            benchmark_type, ""
+        )
+        result = await self._run_vanilla(
+            row, benchmark_type, pure_context=pure_context, context_format="json"
+        )
         return result
 
     async def _run_simulation(
@@ -317,7 +404,7 @@ class ToMBenchmarkRunner:
             engine, SocialWorldModel
         ), "Engine must be an instance of ToMEngine"
         engine.set_task_specific_instructions(SocializedContextPrompt[benchmark_type])
-        if benchmark_type == "tomi":
+        if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
             assert (
                 str(row["index"]) in engine.existing_socialized_contexts
             ), f"Socialized context for index {row['index']} not found"
@@ -334,26 +421,14 @@ class ToMBenchmarkRunner:
         elif benchmark_type == "hitom":
             parsed_result = await hitom_simulation(row, engine)
             result = create_hitom_result(parsed_result, row)
+        elif benchmark_type == "mmtom":
+            parsed_result = await mmtom_simulation(row, engine)
+            result = create_mmtom_result(parsed_result, row)
         else:
             result = await self._run_vanilla(row, benchmark_type)
         if not result:
             result = await self._run_vanilla(row, benchmark_type)
         return result
-
-    def _parse_response(self, response: str, row: dict[str, Any]) -> dict[str, Any]:
-        """Parse ToMi response and create result dictionary."""
-        try:
-            reasoning = response.split("</reasoning>")[0].strip()
-            answer = response.split("<answer>")[1].split("</answer>")[0].strip()
-        except Exception as e:
-            print(f"Failed to parse response: {e}")
-            reasoning = "Failed to parse reasoning"
-            answer = response
-
-        return {
-            "reasoning": reasoning,
-            "answer": answer,
-        }
 
     def _save_result(self, result: dict[str, Any], result_path: Path) -> None:
         """Save experiment result to file."""
@@ -401,13 +476,13 @@ def validate_context_mode(value: str) -> str:
 def run_benchmark(
     benchmark_type: str = typer.Argument(
         ...,
-        help="Type of benchmark to run (tomi/fantom/confaide/hitom)",
+        help="Type of benchmark to run (tomi/fantom/confaide/hitom/mmtom)",
         callback=validate_benchmark_type,
     ),
-    dataset_path: Optional[str] = None,
-    batch_size: int = 4,
-    save: bool = True,
-    model_name: str = "o1-2024-12-17",
+    dataset_path: Optional[str] = typer.Option(None, help="Path to the dataset file"),
+    batch_size: int = typer.Option(4, help="Batch size for processing"),
+    save: bool = typer.Option(True, help="Whether to save results"),
+    model_name: str = typer.Option("o3-2025-04-16", help="Model name to use"),
     mode: str = typer.Option(
         "vanilla",
         help="Mode to run in (vanilla/socialized_context/pure_context/simulation/generate_socialized_context; you need to run generate_socialized_context first to use simulation mode)",
@@ -422,7 +497,7 @@ def run_benchmark(
         "", help="Path to the example analysis file"
     ),
     context_model: str = typer.Option(
-        "o1-2024-12-17",
+        "o3-2025-04-16",
         help="Model to use for context generation",
     ),
 ) -> None:
@@ -433,7 +508,9 @@ def run_benchmark(
             "fantom": "./data/fantom_data/fantom_for_tt_processed.jsonl",
             "confaide": "./data/confaide_data/confaide.jsonl",
             "cobra_frames": "./data/cobra_data/cobra_frames_adv.jsonl",
+            "mmtom": "./data/mmtom-qa/questions.jsonl",
             "hitom": "./data/hitom_data/processed_hitom_data100.csv",
+            "ori_tomi": "./data/Percept-ToMi.csv",
         }[benchmark_type]
 
     dataset_name = dataset_path.split("/")[-1]
@@ -445,17 +522,40 @@ def run_benchmark(
         if "set_id" in data.columns:
             data["set_id"] = data["set_id"].astype(str)
     except Exception as e:
-        # Load jsonl file for fantom and confaide datasets
+        # Load jsonl file for fantom, confaide, and mmtom datasets
         if dataset_path.endswith(".jsonl"):
-            data_list = []
-            with open(dataset_path, "r") as f:
-                for line in f:
-                    entry = json.loads(line)
-                    if benchmark_type == "fantom":
-                        data_list += flatten_fantom_data(entry)
-                    else:
-                        # For confaide, we assume the data is already flattened
-                        data_list.append(entry)
+            data_list: List[Dict[str, Any]] = []
+            if benchmark_type == "mmtom":
+                # For MMTom, read the entire file and split on newlines
+                with open(dataset_path, "r") as f:
+                    content = f.read()
+                    # Split on newlines and filter out empty lines
+                    json_objects = [
+                        obj.strip() for obj in content.split("\n") if obj.strip()
+                    ]
+                    for obj in json_objects:
+                        try:
+                            entry = json.loads(obj)
+                            # Ensure required fields are present
+                            entry["index"] = str(len(data_list))
+                            entry["question_type"] = entry.get("question_type", "")
+                            entry["episode"] = entry.get("episode", "")
+                            entry["answer"] = entry.get(
+                                "answer", ""
+                            )  # Ensure answer field exists
+                            data_list.append(entry)
+                        except json.JSONDecodeError:
+                            pass  # Skip invalid JSON
+            else:
+                # For other datasets, assume one JSON object per line
+                with open(dataset_path, "r") as f:
+                    for line in f:
+                        entry = json.loads(line)
+                        if benchmark_type == "fantom":
+                            data_list += flatten_fantom_data(entry)
+                        else:
+                            # For confaide, we assume the data is already flattened
+                            data_list.append(entry)
             data = pd.DataFrame(data_list)
             data["index"] = [str(i) for i in range(len(data))]
 
@@ -484,6 +584,7 @@ def run_benchmark(
             continue_mode=continue_mode,
             example_analysis_file=example_analysis_file,
             context_model=context_model,
+            load_contexts=mode != "vanilla",  # Skip loading contexts in vanilla mode
         )
     )
 
@@ -496,9 +597,10 @@ async def _run_benchmark(
     save: bool,
     model_name: str,
     mode: str,
-    context_model: str = "o1-2024-12-17",
+    context_model: str = "o3-2025-04-16",
     continue_mode: str = "new",
     example_analysis_file: str = "",
+    load_contexts: bool = True,
 ) -> None:
     """Async implementation of benchmark runner."""
 
@@ -553,7 +655,7 @@ async def _run_benchmark(
         all_results.extend(results)
 
     # Final evaluation report
-    if benchmark_type == "tomi":
+    if benchmark_type == "tomi" or benchmark_type == "ori_tomi":
         tomi_evaluation_report(all_results)
     elif benchmark_type == "fantom":
         fantom_evaluation_report(all_results)
@@ -563,6 +665,8 @@ async def _run_benchmark(
         cobra_frames_evaluation_report(all_results)
     elif benchmark_type == "hitom":
         hitom_evaluation_report(all_results)
+    elif benchmark_type == "mmtom":
+        mmtom_evaluation_report(all_results)
 
 
 if __name__ == "__main__":

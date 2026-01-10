@@ -1,7 +1,8 @@
 from sotopia.agents import LLMAgent
 from sotopia.database import AgentProfile
 from sotopia.messages import AgentAction, Observation
-from sotopia.generation_utils import agenerate, agenerate_action
+from social_world_model.generation_utils import agenerate
+from sotopia.generation_utils import agenerate_action
 from social_world_model.database import SocializedContext, SocializedStructure
 from social_world_model.social_world_model import SocialWorldModel
 from typing import Optional
@@ -9,7 +10,7 @@ import logging
 from pydantic import validate_call
 from sotopia.messages import ActionType
 from rich.logging import RichHandler
-from sotopia.generation_utils.output_parsers import PydanticOutputParser
+from social_world_model.generation_utils import PydanticOutputParser
 
 # Configure logger
 log = logging.getLogger("social_world_model.agent")
@@ -61,7 +62,7 @@ async def agenerate_refined_action(
             Your action should follow the given format:
             {format_instructions}
         """
-        result = await agenerate(
+        result: AgentAction = await agenerate(
             model_name=model_name,
             template=template,
             input_values=dict(
@@ -82,7 +83,7 @@ async def agenerate_refined_action(
         return result
     except Exception as e:
         log.warning(f"Failed to generate refined action due to {e}")
-        return AgentAction(action_type="none", argument="")
+        return AgentAction(action_type="none", argument="", to=[])
 
 
 class SocialWorldModelAgent(LLMAgent):
@@ -194,7 +195,7 @@ class SocialWorldModelAgent(LLMAgent):
     async def aact(self, obs: Observation) -> AgentAction:
         self.recv_message("Environment", obs)
         if len(obs.available_actions) == 1 and "none" in obs.available_actions:
-            none_action = AgentAction(action_type="none", argument="")
+            none_action = AgentAction(action_type="none", argument="", to=[])
             # await self.predict_socialized_context(obs, none_action)
             return none_action
         else:

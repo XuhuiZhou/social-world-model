@@ -59,7 +59,7 @@ def run_dynamic_benchmark(
             "Agent type must be either 'social_world_model' or 'vanilla'"
         )
 
-    agent_class = get_agent_class(agent_type)
+    # agent_class = get_agent_class(agent_type)
 
     # If using CustomSocialWorldModelAgent, pass the social_world_model_name
     if agent_type == "social_world_model":
@@ -68,17 +68,15 @@ def run_dynamic_benchmark(
             kwargs["social_world_model_name"] = social_world_model_name
             super(CustomSocialWorldModelAgent, self).__init__(*args, **kwargs)
 
-        agent_class = type(
-            "SocialWorldModelAgent",
-            (CustomSocialWorldModelAgent,),
-            {"__init__": __init__},
-        )
+        # agent_class = type(
+        #     "SocialWorldModelAgent",
+        #     (CustomSocialWorldModelAgent,),
+        #     {"__init__": __init__},
+        # )
 
     benchmark(
         models=models.split(","),
         partner_model=partner_model,
-        agent_class=agent_class,
-        tag=experiment_tag,
         batch_size=batch_size,
         push_to_db=push_to_db,
         evaluator_model=evaluator_model,

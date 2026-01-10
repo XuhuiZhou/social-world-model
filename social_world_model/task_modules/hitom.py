@@ -17,7 +17,7 @@ def reformat_hitom_data(data_list: dict[str, Any]) -> pd.DataFrame:
 
 
 def prepare_hitom_vanilla(
-    row: dict[str, Any], pure_context: bool = False
+    row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True
 ) -> tuple[str, dict[str, Any]]:
     story = row["story"]
     extra_info = row.get("extra_info", "")
@@ -29,7 +29,20 @@ def prepare_hitom_vanilla(
             story = story + "\n" + extra_info
 
     question = row["question"] + "\n" + row["choices"]
-    template = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. What an agent A tells others doesn't affect A's actual belief. An agent tends to trust an agent that exited the room later than himself. The exit order is known to all agents. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information.
+
+    if with_reasoning:
+        template = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. What an agent A tells others doesn't affect A's actual belief. An agent tends to trust an agent that exited the room later than himself. The exit order is known to all agents. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. First give step-by-step analysis about the question. Then output the answer. Provide your reasoning within the <reasoning></reasoning>tag. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information.
+
+Below is the story and question:
+## Story
+{story}
+## Extra Information
+(to help you better understand and answer the question)
+{extra_info}
+## Question
+{question}"""
+    else:
+        template = """You are analysing a social interaction and need to answer a question about it. The following story happens in chronological order. You will be given a multiple-choice question and a note at the end. You should assume the following: (1) An agent witnesses everything and every movements before exiting a location. (2) An agent A can infer another agent B's mental state only if A and B have been in the same location, or have private or public interactions. (3) Note that every agent tend to lie. What a character tells others doesn't affect his actual belief. What an agent A tells others doesn't affect A's actual belief. An agent tends to trust an agent that exited the room later than himself. The exit order is known to all agents. (4) Agents in private communications know that others won't hear them, but they know that anyone can hear any public claims. For the answer, use <answer>(put your answer here)</answer> and include only the letter corresponding to your choice but not other information.
 
 Below is the story and question:
 ## Story
@@ -51,8 +64,14 @@ Below is the story and question:
 def evaluate_response(result: dict[str, Any]) -> dict[str, Any]:
     # dict(re.findall(r'([A-Z])\. ([^,]+)', choice_str))
     choices = result["choices"]
-    answer = result["answer"].strip().capitalize()
-
+    # remove <answer> and </answer> from answer if they exist
+    answer = (
+        result["answer"]
+        .replace("<answer>", "")
+        .replace("</answer>", "")
+        .strip()
+        .capitalize()
+    )
     answer_dict = dict(re.findall(r"([A-Z])\. ([^,]+)", choices))
     answer_list = list(answer_dict.keys())
 

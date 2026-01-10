@@ -1,5 +1,8 @@
 from typing import Dict, List, Tuple
-from sotopia.generation_utils import PydanticOutputParser, StrOutputParser
+from social_world_model.generation_utils import (
+    PydanticOutputParser,
+    StrOutputParser,
+)
 from pydantic import BaseModel, Field
 from social_world_model.database import (
     Observation,
@@ -9,7 +12,7 @@ from social_world_model.database import (
     SocialSimulation,
     SocializedStructureForModel,
 )
-from sotopia.generation_utils import agenerate
+from social_world_model.generation_utils import agenerate
 from social_world_model.engine import (
     dictlize,
     dictlize_socialized_structure,
@@ -84,7 +87,7 @@ class SocialWorldModel:
         self.agent_prompt = agent_prompt
 
     async def distribute_observations(self, event: str) -> List[Tuple[str, List[str]]]:
-        agent_memory = await agenerate(
+        agent_memory: ObsDistribution = await agenerate(
             model_name=self.model_name,
             template=(
                 "Process the following event and generate a list of agent names and their observations.\n"
@@ -206,7 +209,7 @@ class SocialWorldModel:
             input_values["feedback"] = feedback
 
         template += "Follow these format instructions:\n{format_instructions}"
-        socialized_context = await agenerate(
+        socialized_context: SocializedContextForModel = await agenerate(
             model_name=self.model_name,
             template=template,
             input_values=input_values,
@@ -311,7 +314,7 @@ class SocialWorldModel:
             "If the context is not good enough, respond with 'no', following with the reasoning of the judgement and provide specific feedback on what needs to be improved."
         )
 
-        evaluation = await agenerate(
+        evaluation: str = await agenerate(
             model_name=self.model_name,
             template=template,
             input_values={
@@ -387,7 +390,7 @@ class SocialWorldModel:
         context_history = socialized_context.to_natural_language()
 
         # Generate next step
-        next_step = await agenerate(
+        next_step: SocializedStructureForModel = await agenerate(
             model_name=self.model_name,
             template=template,
             input_values={
