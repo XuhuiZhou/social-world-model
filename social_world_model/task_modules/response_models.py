@@ -4,7 +4,7 @@ This unified model works for all ToM benchmarks (ToMi, FANToM, ConFAIDE, HiToM, 
 and enables vLLM's guided JSON generation for reliable parsing.
 """
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 
 
 class BenchmarkResponse(BaseModel):
@@ -13,9 +13,8 @@ class BenchmarkResponse(BaseModel):
     This model ensures consistent output format and enables vLLM's
     guided JSON generation to avoid parsing failures.
     """
-    model_config = {"extra": "forbid"}
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = {"extra": "forbid"}
 
     reasoning: str = Field(
         description="Step-by-step reasoning explaining how you arrived at the answer. "
