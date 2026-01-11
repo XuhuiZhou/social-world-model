@@ -3,6 +3,7 @@
 This replaces the Together AI fine-tuner with local VERL SFT training.
 Uses the same data preparation from data_utils.py but trains locally on your GPUs.
 """
+
 import os
 import subprocess
 from dataclasses import dataclass
@@ -120,25 +121,25 @@ class VERLSFTTrainer:
 
             # Find user and assistant messages
             user_msg = next((m for m in messages if m["role"] == "user"), None)
-            assistant_msg = next((m for m in messages if m["role"] == "assistant"), None)
+            assistant_msg = next(
+                (m for m in messages if m["role"] == "assistant"), None
+            )
 
             if user_msg and assistant_msg:
-                data.append({
-                    "prompt": user_msg["content"],
-                    "response": assistant_msg["content"],
-                })
+                data.append(
+                    {
+                        "prompt": user_msg["content"],
+                        "response": assistant_msg["content"],
+                    }
+                )
 
         # Create DataFrame and save
         df = pd.DataFrame(data)
-        df.to_parquet(output_path, engine='pyarrow', index=False)
+        df.to_parquet(output_path, engine="pyarrow", index=False)
 
         print(f"Saved {len(df)} records to {output_path}")
 
-    def create_training_script(
-        self,
-        train_path: Path,
-        val_path: Path
-    ) -> Path:
+    def create_training_script(self, train_path: Path, val_path: Path) -> Path:
         """
         Generate the VERL SFT training script.
 
@@ -151,7 +152,11 @@ class VERLSFTTrainer:
         script_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Calculate train_batch_size (must be divisible by n_gpus)
-        train_batch_size = self.config.micro_batch_size * self.config.n_gpus * self.config.gradient_accumulation_steps
+        train_batch_size = (
+            self.config.micro_batch_size
+            * self.config.n_gpus
+            * self.config.gradient_accumulation_steps
+        )
 
         # Build torchrun command
         script_content = f"""#!/bin/bash
@@ -222,14 +227,18 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$N_GPUS \\
         print(f"Script: {script_path}")
         print(f"GPUs: {self.config.n_gpus} x RTX A6000")
         print(f"Model: {self.config.base_model}")
-        print(f"\nStarting training...\n")
+        print("\nStarting training...\n")
 
         # Check W&B API key (VERL will handle initialization)
         wandb_api_key = os.getenv("WANDB_API_KEY")
         if wandb_api_key:
-            print(f"[green]✓[/green] W&B API key found. VERL will log to project: {self.config.wandb_project}")
+            print(
+                f"[green]✓[/green] W&B API key found. VERL will log to project: {self.config.wandb_project}"
+            )
         else:
-            print("[yellow]Warning:[/yellow] WANDB_API_KEY not set. W&B logging disabled.")
+            print(
+                "[yellow]Warning:[/yellow] WANDB_API_KEY not set. W&B logging disabled."
+            )
 
         # Run training subprocess
         try:
@@ -244,7 +253,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$N_GPUS \\
             print("\n[green bold]✓ Training completed successfully![/green bold]")
 
         except subprocess.CalledProcessError as e:
-            print(f"\n[red bold]✗ Training failed with error:[/red bold]")
+            print("\n[red bold]✗ Training failed with error:[/red bold]")
             print(f"  {e}")
             raise
 
@@ -293,18 +302,11 @@ def finetune(
         "training/verl_output", help="Output directory for checkpoints and data"
     ),
     base_model: str = typer.Option(
-        "microsoft/Phi-3-mini-4k-instruct",
-        help="Base model to fine-tune"
+        "microsoft/Phi-3-mini-4k-instruct", help="Base model to fine-tune"
     ),
-    n_gpus: int = typer.Option(
-        3, help="Number of GPUs to use"
-    ),
-    micro_batch_size: int = typer.Option(
-        2, help="Micro batch size per GPU"
-    ),
-    total_steps: int = typer.Option(
-        1000, help="Total training steps"
-    ),
+    n_gpus: int = typer.Option(3, help="Number of GPUs to use"),
+    micro_batch_size: int = typer.Option(2, help="Micro batch size per GPU"),
+    total_steps: int = typer.Option(1000, help="Total training steps"),
 ) -> None:
     """Run VERL SFT fine-tuning pipeline for socialized context generation."""
     print("[bold blue]VERL SFT Fine-Tuning Pipeline[/bold blue]")
@@ -335,7 +337,9 @@ def finetune(
     print(f"  Base model: {config.base_model}")
     print(f"  GPUs: {config.n_gpus} x RTX A6000")
     print(f"  Micro batch size: {config.micro_batch_size} per GPU")
-    print(f"  Effective batch: {config.micro_batch_size * config.n_gpus * config.gradient_accumulation_steps}")
+    print(
+        f"  Effective batch: {config.micro_batch_size * config.n_gpus * config.gradient_accumulation_steps}"
+    )
     print(f"  Learning rate: {config.learning_rate}")
     print(f"  Total steps: {config.total_training_steps}")
     print(f"  W&B project: {config.wandb_project}")
