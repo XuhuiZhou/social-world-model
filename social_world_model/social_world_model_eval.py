@@ -24,6 +24,8 @@ from social_world_model.generation_utils import agenerate, StrOutputParser
 class EvaluationResult(BaseModel):
     """Result of evaluating a single context pair"""
 
+    model_config = {"extra": "forbid"}
+
     file_id: str = Field(description="Filename identifier")
     structural_score: float = Field(description="Schema compliance score (0-1)")
     observation_accuracy: float = Field(

@@ -5,6 +5,7 @@ import json
 
 
 class SocializedStructureForModel(BaseModel):
+    model_config = {"extra": "forbid"}
     timestep: str = Field(
         description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state.",
     )
@@ -47,6 +48,7 @@ class SocializedStructure(BaseModel):
 
 
 class SocializedContextForModel(BaseModel):
+    model_config = {"extra": "forbid"}
     agents_names: list[str] = Field(description="The names of the agents")
     socialized_context: list[SocializedStructureForModel] = Field(
         description="A list of SocializedStructureForModel objects, each representing a timestep of the social world. At the last timestep, all agents' actions should be 'none' as they have already completed the interaction."
@@ -61,6 +63,7 @@ class SocializedContext(BaseModel):
     context_manual: str = Field(
         description="The manual of how to interpret the socialized context, it should come from the prompt of generating the socialized context."
     )
+    task_specific_instructions: str | None = None
 
     def __init__(self, **data: Any) -> None:
         # Add timesteps if not present

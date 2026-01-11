@@ -9,36 +9,42 @@ def prepare_mmtom_vanilla(
     row: dict[str, Any], pure_context: bool = False, with_reasoning: bool = True
 ) -> tuple[str, dict[str, Any]]:
     """Prepare the vanilla prompt for MMTom dataset."""
-    # The question field already contains both context and question
-    question_text = row["question"]
+    context = row["context"]
 
     extra_info = row.get("extra_info", "")
     if extra_info:
         if pure_context:
-            question_text = extra_info
+            context = extra_info
             extra_info = ""
+
+    question = row["question"]
 
     if with_reasoning:
         template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should carefully analyze the character's actions and beliefs based on their observations. Provide your reasoning within the <reasoning></reasoning> tag. For the answer, use <answer>(put your answer here)</answer> and only include the letter (a or b) of your chosen option.
 
 Below is the context and question (and optional extra information):
-{question_text}
-
+## Context
+{context}
 ## Extra Information
 (to help you better understand and answer the question)
-{extra_info}"""
+{extra_info}
+## Question
+{question}"""
     else:
         template = """Imagine that you are an observer in the scenario. Assume that the characters can perceive every scene in their location but not scenes occurring elsewhere. If something is being moved, that means it is not in its original location anymore. You should carefully analyze the character's actions and beliefs based on their observations. For the answer, use <answer>(put your answer here)</answer> and only include the letter (a or b) of your chosen option.
 
 Below is the context and question (and optional extra information):
-{question_text}
-
+## Context
+{context}
 ## Extra Information
 (to help you better understand and answer the question)
-{extra_info}"""
+{extra_info}
+## Question
+{question}"""
 
     input_values = {
-        "question_text": question_text,
+        "context": context,
+        "question": question,
         "extra_info": extra_info,
     }
 
@@ -53,6 +59,8 @@ def create_mmtom_result(
         parsed_result["answer"].replace("<answer>", "").replace("</answer>", "").strip()
     )
     result = {
+        "index": row["index"],
+        "context": row["context"],
         "question": row["question"],
         "reasoning": parsed_result.get("reasoning", ""),
         "answer": parsed_result.get("answer", ""),
