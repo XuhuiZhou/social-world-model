@@ -21,7 +21,6 @@ class SocializedStructureForModel(BaseModel):
 
 
 class SocializedStructure(BaseModel):
-    model_config = {"extra": "forbid"}
     timestep: str = Field(
         description="The timestep of the current socialized structure, it could be a integer number or a description of the time of the state."
     )
@@ -57,7 +56,6 @@ class SocializedContextForModel(BaseModel):
 
 
 class SocializedContext(BaseModel):
-    model_config = {"extra": "forbid"}
     agents_names: list[str] = Field(description="The names of the agents")
     socialized_context: list[SocializedStructure] = Field(
         description="A list of SocializedStructure objects, each representing a timestep of the social world."
@@ -100,7 +98,6 @@ class SocializedContext(BaseModel):
 
 
 class SocialSimulation(BaseModel):
-    model_config = {"extra": "forbid"}
     simulations: list[SocializedContext] = Field(
         description="A list of SocializedContext objects, each representing a simulation of the social world."
     )
@@ -124,7 +121,6 @@ class SocialSimulation(BaseModel):
 
 
 class Observation(BaseModel):
-    model_config = {"extra": "forbid"}
     agent_name: str = Field(description="the name of the agent")
     last_turn: str = Field(description="the last turn of the conversation")
     turn_number: int = Field(description="the turn number of the conversation")
@@ -135,7 +131,6 @@ class Observation(BaseModel):
 
 
 class AgentAction(BaseModel):
-    model_config = {"extra": "forbid"}
     agent_name: str = Field(description="the name of the agent")
     output_channel: str = Field(description="the name of the output channel")
     action_type: ActionType = Field(
