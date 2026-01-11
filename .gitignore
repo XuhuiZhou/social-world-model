@@ -170,3 +170,6 @@ hidden_utils/*
 Experiments_doc.md
 
 wandb/*
+outputs/*
+training/verl_output/*
+training/verl_test/*

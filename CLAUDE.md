@@ -243,6 +243,8 @@ bun start
 
 ### Fine-Tuning
 
+#### Together AI Fine-Tuning
+
 ```bash
 # Run fine-tuning pipeline (requires TOGETHER_API_KEY and WANDB_API_KEY in .env)
 uv run --env-file .env python training/finetune_socialized_context.py
@@ -253,6 +255,132 @@ uv run --env-file .env python training/finetune_socialized_context.py --config-p
 # Override data directory
 uv run --env-file .env python training/finetune_socialized_context.py --data-dir=data/custom_dir
 ```
+
+#### VERL Local Fine-Tuning
+
+**Recommended: Docker Setup**
+
+Docker provides a pre-configured environment with all dependencies (PyTorch, vLLM, flash-attn, CUDA) properly installed, avoiding version conflicts.
+
+**System Requirements:**
+- NVIDIA GPU with CUDA support
+- Docker with nvidia-container-toolkit
+- 3x RTX A6000 (48GB) or similar GPUs recommended
+
+**Setup Instructions:**
+
+```bash
+# 1. Pull the latest VERL Docker image (14.2 GB, includes vLLM 0.12.x)
+sudo docker pull verlai/verl:vllm012.latest
+
+# 2. Create and start container (from project root)
+cd /usr2/xuhuiz/social-world-model
+
+sudo docker create \
+    --runtime=nvidia \
+    --gpus all \
+    --net=host \
+    --shm-size="10g" \
+    --cap-add=SYS_ADMIN \
+    -v $(pwd):/workspace/verl \
+    --name verl \
+    verlai/verl:vllm012.latest \
+    sleep infinity
+
+sudo docker start verl
+
+# 3. Enter the container
+sudo docker exec -it verl bash
+
+# 4. Inside container: Install VERL
+cd /workspace/verl/verl_repo
+pip3 install --no-deps -e .
+
+# 5. Inside container: Install social-world-model
+cd /workspace/verl
+pip3 install -e .
+
+# 6. Inside container: Install correct sotopia version
+pip3 install git+https://github.com/sotopia-lab/sotopia.git@main
+
+# 7. Inside container: Run training
+# Full training (6000 examples)
+python training/finetune_verl_sft.py \
+  --data-dir="data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_train_6000.csv" \
+  --output-dir="training/verl_output" \
+  --n-gpus=3 \
+  --total-steps=1000
+
+# Quick test (100 examples)
+python training/finetune_verl_sft.py \
+  --data-dir="data/tomi_results/socialized_context_groundtruth_rephrased_tomi_test_100.csv" \
+  --output-dir="training/verl_test" \
+  --n-gpus=1 \
+  --total-steps=50
+```
+
+**Single command (inside container) - Full training:**
+
+```bash
+cd /workspace/verl/verl_repo && pip3 install --no-deps -e . && cd /workspace/verl && pip3 install -e . && pip3 install git+https://github.com/sotopia-lab/sotopia.git@main && python training/finetune_verl_sft.py --data-dir="data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_train_6000.csv" --output-dir="training/verl_output" --n-gpus=3 --total-steps=1000
+```
+
+**Single command (inside container) - Quick test:**
+
+```bash
+cd /workspace/verl/verl_repo && pip3 install --no-deps -e . && cd /workspace/verl && pip3 install -e . && pip3 install git+https://github.com/sotopia-lab/sotopia.git@main && python training/finetune_verl_sft.py --data-dir="data/tomi_results/socialized_context_groundtruth_rephrased_tomi_test_100.csv" --output-dir="training/verl_test" --n-gpus=1 --total-steps=50
+```
+
+**Container Management:**
+
+```bash
+# Stop container
+sudo docker stop verl
+
+# Restart container
+sudo docker start verl
+
+# Remove container (keeps image)
+sudo docker rm verl
+
+# View container logs
+sudo docker logs verl
+```
+
+**Alternative VERL Images:**
+- `verlai/verl:vllm012.latest` - Latest stable (recommended)
+- `verlai/verl:vllm012.exp` - Experimental features
+- `verlai/verl:vllm011.latest` - Older vLLM 0.11.x version
+
+**Troubleshooting:**
+
+- **Permission denied on Docker socket**: Add user to docker group or use `sudo`
+- **GPU not accessible**: Ensure nvidia-container-toolkit is installed
+- **Out of memory**: Reduce `--micro-batch-size` in training config
+- **Import errors inside container**: Verify VERL installation with `pip show verl`
+
+**Alternative: Manual Installation (Advanced)**
+
+If Docker is not available, you can attempt manual installation with the `verl_training` extra:
+
+```bash
+# 1. Install dependencies
+uv sync --extra verl_training
+
+# 2. Install flash-attn separately (requires torch 2.4.x, GLIBC 2.31+)
+uv pip install --python .venv/bin/python flash-attn==2.7.4.post1 --no-build-isolation
+
+# 3. Run training
+bash training/verl_test/run_sft.sh
+```
+
+**Warning:** Manual installation has strict version constraints:
+- PyTorch 2.4.x (incompatible with vLLM 0.7+)
+- vLLM 0.6.0-0.6.4 only
+- flash-attn 2.7.4 may fail on systems with GLIBC < 2.31
+- Dependency conflicts are common and difficult to resolve
+
+Docker is strongly recommended to avoid these issues.
 
 ## Architecture
 

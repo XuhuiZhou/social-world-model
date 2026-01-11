@@ -13,6 +13,7 @@ class BenchmarkResponse(BaseModel):
     This model ensures consistent output format and enables vLLM's
     guided JSON generation to avoid parsing failures.
     """
+    model_config = {"extra": "forbid"}
 
     model_config = ConfigDict(extra="forbid")
 
