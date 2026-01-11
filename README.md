@@ -126,6 +126,121 @@ uv run --env-file .env python run_benchmarks.py tomi \
 - Model loading takes 30-60 seconds on first use, but subsequent calls are fast (<1s) as the model is cached in GPU memory
 - No API keys needed for offline vLLM inference!
 
+## Fine-Tuning with VERL (Local Training)
+
+The project supports local fine-tuning using [VERL](https://github.com/volcengine/verl) (Volcano Engine Reinforcement Learning) as an alternative to Together AI's cloud-based fine-tuning.
+
+### Docker Setup (Recommended)
+
+Docker provides a pre-configured environment with all dependencies (PyTorch, vLLM, flash-attn, CUDA) properly installed, avoiding version conflicts.
+
+**System Requirements:**
+- NVIDIA GPU with CUDA support
+- Docker with nvidia-container-toolkit
+- 3x RTX A6000 (48GB) or similar GPUs recommended
+
+**One-Line Setup:**
+
+```bash
+sudo docker create --runtime=nvidia --gpus all --net=host --shm-size="10g" --cap-add=SYS_ADMIN -v $(pwd):/workspace/verl --name verl verlai/verl:vllm012.latest sleep infinity && sudo docker start verl && sudo docker exec -it verl bash
+```
+
+**Inside the container:**
+
+```bash
+# Install VERL
+cd /workspace/verl/verl_repo
+pip3 install --no-deps -e .
+
+# Install social-world-model and dependencies
+cd /workspace/verl
+pip3 install -e .
+
+# Install correct sotopia version (from GitHub)
+pip3 install git+https://github.com/sotopia-lab/sotopia.git@main
+
+# Run training (full 6000-example dataset)
+python training/finetune_verl_sft.py \
+  --data-dir="data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_train_6000.csv" \
+  --output-dir="training/verl_output" \
+  --n-gpus=3 \
+  --total-steps=1000
+
+# Or quick test (100-example dataset)
+python training/finetune_verl_sft.py \
+  --data-dir="data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_train_6000.csv_o3-2025-04-16" \
+  --output-dir="training/verl_test" \
+  --n-gpus=1 \
+  --total-steps=50
+```
+
+**Or as a single command (full training):**
+
+```bash
+cd /workspace/verl/verl_repo && pip3 install --no-deps -e . && cd /workspace/verl && pip3 install -e . && pip3 install git+https://github.com/sotopia-lab/sotopia.git@main && python training/finetune_verl_sft.py --data-dir="data/tomi_results/socialized_context_o3-2025-04-16_rephrased_tomi_train_6000.csv_o3-2025-04-16" --output-dir="training/verl_output" --n-gpus=3 --total-steps=1000
+```
+
+**Single command (quick test):**
+
+```bash
+cd /workspace/verl/verl_repo && pip3 install --no-deps -e . && cd /workspace/verl && pip3 install -e . && pip3 install git+https://github.com/sotopia-lab/sotopia.git@main && python training/finetune_verl_sft.py --data-dir="data/tomi_results/socialized_context_groundtruth_rephrased_tomi_test_100.csv" --output-dir="training/verl_test" --n-gpus=1 --total-steps=50
+```
+
+**Container Management:**
+
+```bash
+# Stop container
+sudo docker stop verl
+
+# Restart container
+sudo docker start verl
+
+# Re-enter container
+sudo docker exec -it verl bash
+
+# Remove container (keeps image)
+sudo docker rm verl
+```
+
+### Alternative: Manual Installation (Advanced)
+
+If Docker is not available, you can attempt manual installation:
+
+```bash
+# Install VERL and dependencies
+uv sync --extra verl_training
+
+# Install flash-attn separately (requires torch 2.4.x, GLIBC 2.31+)
+uv pip install --python .venv/bin/python flash-attn==2.7.4.post1 --no-build-isolation
+
+# Run training
+bash training/verl_test/run_sft.sh
+```
+
+**Warning:** Manual installation has strict version constraints:
+- PyTorch 2.4.x (incompatible with vLLM 0.7+)
+- vLLM 0.6.0-0.6.4 only
+- flash-attn 2.7.4 may fail on systems with GLIBC < 2.31
+- Dependency conflicts are common and difficult to resolve
+
+Docker is strongly recommended to avoid these issues.
+
+### Using Fine-Tuned Models
+
+Load with Transformers:
+
+```python
+from transformers import AutoModelForCausalLM
+
+model_path = "training/verl_output/checkpoints/step_1000"
+model = AutoModelForCausalLM.from_pretrained(model_path)
+```
+
+Or use with vLLM for faster inference:
+```python
+model_name = "vllm/training/verl_output/checkpoints/step_1000"
+```
+
 ## Evaluating Socialized Contexts
 
 ### Evaluate Benchmark Results (Task Accuracy)
