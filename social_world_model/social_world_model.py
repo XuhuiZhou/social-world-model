@@ -23,12 +23,14 @@ import json
 
 
 class ObsDistribution(BaseModel):
+    model_config = {"extra": "forbid"}
     agents_per_observation: List[Tuple[str, List[str]]] = Field(
         description="The list of observations with a list of agents that perceive the observation"
     )
 
 
 class FormattedQuestion(BaseModel):
+    model_config = {"extra": "forbid"}
     agent_name: str = Field(
         description="The name of the agent that the question should be directed to"
     )
@@ -38,6 +40,7 @@ class FormattedQuestion(BaseModel):
 
 
 class Simulation(BaseModel):
+    model_config = {"extra": "forbid"}
     agents: List[str] = Field(description="The list of agents in the simulation")
     agent_memories: Dict[str, List[str]] = Field(
         description="The list of memories for each agent"

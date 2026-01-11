@@ -539,7 +539,6 @@ def run_benchmark(
                         try:
                             entry = json.loads(obj)
                             # Ensure required fields are present
-                            entry["index"] = str(len(data_list))
                             entry["question_type"] = entry.get("question_type", "")
                             entry["episode"] = entry.get("episode", "")
                             entry["answer"] = entry.get(
@@ -559,7 +558,8 @@ def run_benchmark(
                             # For confaide, we assume the data is already flattened
                             data_list.append(entry)
             data = pd.DataFrame(data_list)
-            data["index"] = [str(i) for i in range(len(data))]
+            if "index" not in data.columns:
+                data["index"] = [str(i) for i in range(len(data))]
 
         elif dataset_path.endswith(".json"):
             with open(dataset_path, "r") as f:
