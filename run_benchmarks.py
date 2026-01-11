@@ -515,6 +515,8 @@ def run_benchmark(
 
     dataset_name = dataset_path.split("/")[-1]
     try:
+        if not dataset_path.endswith(".csv"):
+            raise ValueError("Data set in a different format")
         data = pd.read_csv(dataset_path).fillna("")
         # Ensure index is string
         if "index" in data.columns:
