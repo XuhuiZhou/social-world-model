@@ -41,6 +41,12 @@ SOTOPIA_STORAGE_BACKEND=local
 mkdir -p data
 ```
 
+The paper's lean benchmark manifests, source links, and reported aggregate
+results are available in [`reproducibility/`](reproducibility/README.md). Raw
+third-party benchmark text is not duplicated in this repository; follow the
+source and access instructions there, then verify the local files against the
+identifier-and-hash manifests.
+
 ## Run ToM Benchmarks
 
 All commands should be run with `--env-file .env` to load your API keys:

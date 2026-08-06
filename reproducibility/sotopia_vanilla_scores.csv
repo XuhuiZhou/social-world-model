@@ -1,0 +1,8 @@
+agent_model,goal_completion_score,ci_half_width,episodes,partner_model
+o3-2025-04-16,7.37,0.3538071858413783,100,GPT-4o
+o3-mini-2025-01-31,6.24,0.4941447408122283,100,GPT-4o
+o1-2024-12-17,6.12,0.37744824371395874,100,GPT-4o
+gpt-4.1-2025-04-14,6.04,0.3541892948501477,100,GPT-4o
+o1-mini-2024-09-12,4.73,0.5107178096743283,100,GPT-4o
+together_ai/meta-llama/Llama-4-Scout-17B-16E-Instruct,4.75,0.3675637144639321,100,GPT-4o
+together_ai/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8,4.52,0.3699918220294583,100,GPT-4o

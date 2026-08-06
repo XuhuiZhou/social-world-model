@@ -1,0 +1,6 @@
+benchmark,paper_sample_size,expected_local_path,official_source,redistributed_here,notes
+ToMi,600,data/Percept-ToMi.csv,https://github.com/facebookresearch/ToMi,no,"Official generator; local processed file is verified by the split manifest"
+ParaToMi,600,data/rephrased_tomi_test_600.csv,https://aclanthology.org/2023.acl-long.780/,no,"Access-controlled paper copy; obtain through the dataset authors"
+FANToM,64 conversations,data/fantom_data/fantom_for_tt_processed.jsonl,https://github.com/skywalker023/fantom,no,"Official repository downloads the benchmark"
+HiToM,100 questions,data/hitom_data/processed_hitom_data100.csv,https://github.com/ying-hui-he/Hi-ToM_dataset,no,"Official dataset repository"
+MMToM-QA,302 of 600,data/mmtom-qa/questions.jsonl,https://github.com/chuanyangjin/MMToM-QA,no,"Exact 302 identifiers were not retained; the released manifest covers all 600 candidates"
